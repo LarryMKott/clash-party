@@ -48,7 +48,7 @@ const REGION_KEYWORDS: [string, RegExp][] = [
   ['TH', /泰国|泰國|Thailand|\bTH\b/i],
   ['VN', /越南|Vietnam|\bVN\b/i],
   ['PH', /菲律宾|菲律賓|Philippines|\bPH\b/i],
-  ['ID', /印尼|Indonesia|\bID\b/i],
+  ['ID', /印尼|印度尼西亚|印度尼西亞|Indonesia|\bID\b/i],
   ['IN', /印度|\bIndia\b/i],
   ['AE', /迪拜|杜拜|阿联酋|阿聯酋|Dubai|\bAE\b/i],
   ['TR', /土耳其|Turkey|Türkiye|\bTR\b/i],
@@ -64,15 +64,16 @@ const REGION_KEYWORDS: [string, RegExp][] = [
   ['FR', /法国|法國|巴黎|France|Paris|\bFR\b/i],
   ['NL', /荷兰|荷蘭|阿姆斯特丹|Netherlands|Amsterdam|\bNL\b/i],
   ['RU', /俄罗斯|俄羅斯|莫斯科|Russia|Moscow|\bRU\b/i],
-  ['AU', /澳大?利亚|澳大?利亞|澳洲|悉尼|Australia|Sydney|\bAU\b/i]
+  ['AU', /澳大?利亚|澳大?利亞|澳洲|悉尼|Australia|Sydney|\bAUS?\b/i]
 ]
 
 function isoFromFlagEmoji(name: string): string | null {
   const match = name.match(/[\u{1F1E6}-\u{1F1FF}]{2}/u)
   if (!match) return null
-  const a = match[0].codePointAt(0) ?? 0
-  const b = match[1].codePointAt(0) ?? 0
-  return String.fromCharCode(a - 0x1f1e6 + 65) + String.fromCharCode(b - 0x1f1e6 + 65)
+  // match[0] 恰好是两个区域指示符码点，逐个换算成 ISO 字母
+  const points = Array.from(match[0]).map((c) => c.codePointAt(0) ?? 0)
+  if (points.length !== 2) return null
+  return String.fromCharCode(points[0] - 0x1f1e6 + 65, points[1] - 0x1f1e6 + 65)
 }
 
 export function resolveRegion(name: string): RegionInfo | undefined {
