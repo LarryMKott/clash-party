@@ -11,6 +11,16 @@ on:
 
 permissions: write-all
 
+# Fork-friendly guards: jobs that depend on upstream-only secrets are skipped
+# automatically when the corresponding secret is not configured in the repo.
+env:
+  HAS_CSC_LINK: ${{ secrets.CSC_LINK != '' }}
+  HAS_CSC_INSTALLER_LINK: ${{ secrets.CSC_INSTALLER_LINK != '' }}
+  HAS_APPLE_ID: ${{ secrets.APPLE_ID != '' }}
+  HAS_AUR_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY != '' }}
+  HAS_WINGET_TOKEN: ${{ secrets.POMPURIN404_TOKEN != '' }}
+  HAS_TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN != '' }}
+
 jobs:
   cleanup-dev-release:
     runs-on: ubuntu-latest
@@ -348,7 +358,7 @@ jobs:
 
   macos:
     needs: [cleanup-dev-release]
-    if: always() && (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch')
+    if: always() && (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') && env.HAS_CSC_LINK == 'true' && env.HAS_CSC_INSTALLER_LINK == 'true' && env.HAS_APPLE_ID == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -484,7 +494,7 @@ jobs:
 
   macos10:
     needs: [cleanup-dev-release]
-    if: always() && (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch')
+    if: always() && (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') && env.HAS_CSC_LINK == 'true' && env.HAS_CSC_INSTALLER_LINK == 'true' && env.HAS_APPLE_ID == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -643,13 +653,13 @@ jobs:
           GITHUB_EVENT_NAME: workflow_dispatch
         run: node scripts/update-version.mjs
       - name: Telegram Notification
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v') && env.HAS_TELEGRAM_TOKEN == 'true'
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           RELEASE_TYPE: release
         run: pnpm telegram
       - name: Telegram Dev Notification
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && env.HAS_TELEGRAM_TOKEN == 'true'
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           GITHUB_SHA: ${{ github.sha }}
@@ -684,7 +694,7 @@ jobs:
           - mihomo-party-electron
           - mihomo-party-bin
           - mihomo-party
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') && env.HAS_AUR_KEY == 'true'
     needs: updater
     runs-on: ubuntu-latest
     steps:
@@ -721,7 +731,7 @@ jobs:
           allow_empty_commits: false
 
   aur-git-updater:
-    if: startsWith(github.ref, 'refs/heads/')
+    if: startsWith(github.ref, 'refs/heads/') && env.HAS_AUR_KEY == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -743,7 +753,7 @@ jobs:
           allow_empty_commits: false
 
   winget:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') && env.HAS_WINGET_TOKEN == 'true'
     name: Update WinGet Package
     needs: windows
     runs-on: ubuntu-latest
