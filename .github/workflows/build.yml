@@ -11,17 +11,39 @@ on:
 
 permissions: write-all
 
-# Fork-friendly guards: jobs that depend on upstream-only secrets are skipped
-# automatically when the corresponding secret is not configured in the repo.
-env:
-  HAS_CSC_LINK: ${{ secrets.CSC_LINK != '' }}
-  HAS_CSC_INSTALLER_LINK: ${{ secrets.CSC_INSTALLER_LINK != '' }}
-  HAS_APPLE_ID: ${{ secrets.APPLE_ID != '' }}
-  HAS_AUR_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY != '' }}
-  HAS_WINGET_TOKEN: ${{ secrets.POMPURIN404_TOKEN != '' }}
-  HAS_TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN != '' }}
-
 jobs:
+  # Fork-friendly guards: jobs that depend on upstream-only secrets are skipped
+  # automatically when the corresponding secret is not configured in the repo.
+  # Job-level `if` cannot access the env/secrets contexts, so the flags are
+  # computed once here and consumed via `needs['detect-secrets'].outputs`.
+  detect-secrets:
+    runs-on: ubuntu-latest
+    outputs:
+      has_csc_link: ${{ steps.flags.outputs.has_csc_link }}
+      has_csc_installer_link: ${{ steps.flags.outputs.has_csc_installer_link }}
+      has_apple_id: ${{ steps.flags.outputs.has_apple_id }}
+      has_aur_key: ${{ steps.flags.outputs.has_aur_key }}
+      has_winget_token: ${{ steps.flags.outputs.has_winget_token }}
+      has_telegram_token: ${{ steps.flags.outputs.has_telegram_token }}
+    steps:
+      - name: Compute secret presence flags
+        env:
+          HAS_CSC_LINK: ${{ secrets.CSC_LINK != '' }}
+          HAS_CSC_INSTALLER_LINK: ${{ secrets.CSC_INSTALLER_LINK != '' }}
+          HAS_APPLE_ID: ${{ secrets.APPLE_ID != '' }}
+          HAS_AUR_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY != '' }}
+          HAS_WINGET_TOKEN: ${{ secrets.POMPURIN404_TOKEN != '' }}
+          HAS_TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN != '' }}
+        run: |
+          {
+            echo "has_csc_link=$HAS_CSC_LINK"
+            echo "has_csc_installer_link=$HAS_CSC_INSTALLER_LINK"
+            echo "has_apple_id=$HAS_APPLE_ID"
+            echo "has_aur_key=$HAS_AUR_KEY"
+            echo "has_winget_token=$HAS_WINGET_TOKEN"
+            echo "has_telegram_token=$HAS_TELEGRAM_TOKEN"
+          } >> "$GITHUB_OUTPUT"
+
   cleanup-dev-release:
     runs-on: ubuntu-latest
     steps:
@@ -357,8 +379,8 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
   macos:
-    needs: [cleanup-dev-release]
-    if: always() && (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') && env.HAS_CSC_LINK == 'true' && env.HAS_CSC_INSTALLER_LINK == 'true' && env.HAS_APPLE_ID == 'true'
+    needs: [cleanup-dev-release, detect-secrets]
+    if: always() && (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') && needs['detect-secrets'].outputs.has_csc_link == 'true' && needs['detect-secrets'].outputs.has_csc_installer_link == 'true' && needs['detect-secrets'].outputs.has_apple_id == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -493,8 +515,8 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
   macos10:
-    needs: [cleanup-dev-release]
-    if: always() && (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') && env.HAS_CSC_LINK == 'true' && env.HAS_CSC_INSTALLER_LINK == 'true' && env.HAS_APPLE_ID == 'true'
+    needs: [cleanup-dev-release, detect-secrets]
+    if: always() && (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') && needs['detect-secrets'].outputs.has_csc_link == 'true' && needs['detect-secrets'].outputs.has_csc_installer_link == 'true' && needs['detect-secrets'].outputs.has_apple_id == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -633,7 +655,7 @@ jobs:
 
   updater:
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
-    needs: [windows, windows7, linux, macos, macos10]
+    needs: [windows, windows7, linux, macos, macos10, detect-secrets]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -653,13 +675,13 @@ jobs:
           GITHUB_EVENT_NAME: workflow_dispatch
         run: node scripts/update-version.mjs
       - name: Telegram Notification
-        if: startsWith(github.ref, 'refs/tags/v') && env.HAS_TELEGRAM_TOKEN == 'true'
+        if: startsWith(github.ref, 'refs/tags/v') && needs['detect-secrets'].outputs.has_telegram_token == 'true'
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           RELEASE_TYPE: release
         run: pnpm telegram
       - name: Telegram Dev Notification
-        if: github.event_name == 'workflow_dispatch' && env.HAS_TELEGRAM_TOKEN == 'true'
+        if: github.event_name == 'workflow_dispatch' && needs['detect-secrets'].outputs.has_telegram_token == 'true'
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           GITHUB_SHA: ${{ github.sha }}
@@ -694,8 +716,8 @@ jobs:
           - mihomo-party-electron
           - mihomo-party-bin
           - mihomo-party
-    if: startsWith(github.ref, 'refs/tags/v') && env.HAS_AUR_KEY == 'true'
-    needs: updater
+    if: startsWith(github.ref, 'refs/tags/v') && needs['detect-secrets'].outputs.has_aur_key == 'true'
+    needs: [updater, detect-secrets]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -731,7 +753,8 @@ jobs:
           allow_empty_commits: false
 
   aur-git-updater:
-    if: startsWith(github.ref, 'refs/heads/') && env.HAS_AUR_KEY == 'true'
+    if: startsWith(github.ref, 'refs/heads/') && needs['detect-secrets'].outputs.has_aur_key == 'true'
+    needs: detect-secrets
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -753,9 +776,9 @@ jobs:
           allow_empty_commits: false
 
   winget:
-    if: startsWith(github.ref, 'refs/tags/v') && env.HAS_WINGET_TOKEN == 'true'
+    if: startsWith(github.ref, 'refs/tags/v') && needs['detect-secrets'].outputs.has_winget_token == 'true'
     name: Update WinGet Package
-    needs: windows
+    needs: [windows, detect-secrets]
     runs-on: ubuntu-latest
     steps:
       - name: Get Tag Name
