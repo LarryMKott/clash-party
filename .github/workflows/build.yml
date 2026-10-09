@@ -654,7 +654,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
   updater:
-    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    if: always() && !failure() && !cancelled() && (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch')
     needs: [windows, windows7, linux, macos, macos10, detect-secrets]
     runs-on: ubuntu-latest
     steps:

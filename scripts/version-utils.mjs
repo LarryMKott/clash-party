@@ -60,13 +60,14 @@ export function getProcessedVersion() {
   }
 }
 
-// 生成下载URL
+// 生成下载URL：fork/自建仓库时指向 GITHUB_REPOSITORY，未注入时回退上游
 export function getDownloadUrl(isDev, version) {
+  const repo = process.env.GITHUB_REPOSITORY || 'mihomo-party-org/clash-party'
+  const base = `https://github.com/${repo}/releases/download`
   if (isDev) {
-    return 'https://github.com/mihomo-party-org/clash-party/releases/download/dev'
-  } else {
-    return `https://github.com/mihomo-party-org/clash-party/releases/download/v${version}`
+    return `${base}/dev`
   }
+  return `${base}/v${version}`
 }
 
 export function generateDownloadLinksMarkdown(downloadUrl, version) {
