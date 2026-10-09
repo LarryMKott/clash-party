@@ -36,10 +36,14 @@ import {
   MdEdit,
   MdVisibilityOff
 } from 'react-icons/md'
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback, lazy, Suspense } from 'react'
 import { GroupedVirtuoso, GroupedVirtuosoHandle } from 'react-virtuoso'
 import ProxyItem from '@renderer/components/proxies/proxy-item'
 import { IoIosArrowBack } from 'react-icons/io'
+import { IoEarthOutline, IoHardwareChip } from 'react-icons/io5'
+import SmartNeuralOverlay, {
+  isNeuralAutoPlayEnabled
+} from '@renderer/components/proxies/smart-neural-overlay'
 import { useGroups } from '@renderer/hooks/use-groups'
 import CollapseInput from '@renderer/components/base/collapse-input'
 import { includesIgnoreCase } from '@renderer/utils/includes'
@@ -73,6 +77,12 @@ import type { SimpleObject } from '../../../shared/simple-config'
 const GROUP_EXPAND_STATE_KEY = 'proxy_group_expand_state'
 const EMPTY_GROUPS: IMihomoMixedGroup[] = []
 const restrictToVerticalAxis: Modifier = ({ transform }) => ({ ...transform, x: 0 })
+
+const GlobeModal = lazy(() => import('@renderer/components/proxies/globe-modal'))
+
+function isSmartGroup(group: IMihomoMixedGroup): boolean {
+  return String(group.type).toLowerCase() === 'smart'
+}
 
 interface GroupExpandState {
   byName: Record<string, boolean>
@@ -272,6 +282,59 @@ const Proxies: React.FC = () => {
       setCreatingGroup(false)
     }
   }, [simpleMode])
+
+  // ─── 花活：3D 地球视图 / Smart 神经网络动画 ────────────────────────────────
+  const [globeOpen, setGlobeOpen] = useState(false)
+  const [neural, setNeural] = useState<{
+    groupName: string
+    nodes: { name: string; delay: number }[]
+    winner: string
+  }>()
+
+  const openNeural = useCallback(
+    (group: IMihomoMixedGroup): void => {
+      if (appConfig?.disableAnimations) return
+      const nodes = group.all
+        .filter((p) => !('all' in p))
+        .map((p) => ({
+          name: p.name,
+          delay: p.history.length > 0 ? p.history[p.history.length - 1].delay : 0
+        }))
+      setNeural({ groupName: group.name, nodes, winner: group.now })
+    },
+    [appConfig?.disableAnimations]
+  )
+
+  // Smart 组切换节点时自动播放（节流 + 可通过开关关闭）
+  const smartNowRef = useRef<Record<string, string>>({})
+  const neuralLastShownRef = useRef<Record<string, number>>({})
+  useEffect(() => {
+    for (const group of groups) {
+      if (!isSmartGroup(group)) continue
+      const prev = smartNowRef.current[group.name]
+      smartNowRef.current[group.name] = group.now
+      if (!prev || prev === group.now) continue
+      if (!isNeuralAutoPlayEnabled()) continue
+      if (Date.now() - (neuralLastShownRef.current[group.name] ?? 0) < 90_000) continue
+      neuralLastShownRef.current[group.name] = Date.now()
+      openNeural(group)
+      break
+    }
+  }, [groups, openNeural])
+
+  const globeNodes = useMemo(() => {
+    const byName = new Map<string, { name: string; delay: number }>()
+    for (const group of groups) {
+      for (const proxy of group.all) {
+        if ('all' in proxy || byName.has(proxy.name)) continue
+        byName.set(proxy.name, {
+          name: proxy.name,
+          delay: proxy.history.length > 0 ? proxy.history[proxy.history.length - 1].delay : 0
+        })
+      }
+    }
+    return Array.from(byName.values())
+  }, [groups])
 
   const {
     proxyDisplayMode = 'simple',
@@ -723,6 +786,17 @@ const Proxies: React.FC = () => {
                         >
                           <FaLocationCrosshairs className="text-lg text-foreground-500" />
                         </Button>
+                        {!editing && isSmartGroup(groups[index]) && (
+                          <Button
+                            title={t('proxies.neural.title')}
+                            variant="light"
+                            size="sm"
+                            isIconOnly
+                            onPress={() => openNeural(groups[index])}
+                          >
+                            <IoHardwareChip className="text-lg text-foreground-500" />
+                          </Button>
+                        )}
                         <Button
                           title={t('proxies.delay.test')}
                           variant="light"
@@ -770,7 +844,8 @@ const Proxies: React.FC = () => {
       openGroupEditor,
       configuredGroups,
       mutateSimple,
-      savingOrder
+      savingOrder,
+      openNeural
     ]
   )
 
@@ -834,6 +909,16 @@ const Proxies: React.FC = () => {
       title={t('proxies.title')}
       header={
         <>
+          <Button
+            size="sm"
+            isIconOnly
+            variant="light"
+            className="app-nodrag"
+            title={t('proxies.globe.title')}
+            onPress={() => setGlobeOpen(true)}
+          >
+            <IoEarthOutline className="text-lg" />
+          </Button>
           <Dropdown placement="bottom-end" closeOnSelect={false}>
             <DropdownTrigger>
               <Button
@@ -1081,6 +1166,17 @@ const Proxies: React.FC = () => {
           />
         </div>
       )}
+      {neural && (
+        <SmartNeuralOverlay
+          groupName={neural.groupName}
+          nodes={neural.nodes}
+          winner={neural.winner}
+          onClose={() => setNeural(undefined)}
+        />
+      )}
+      <Suspense fallback={null}>
+        {globeOpen && <GlobeModal nodes={globeNodes} onClose={() => setGlobeOpen(false)} />}
+      </Suspense>
     </BasePage>
   )
 }

@@ -7,12 +7,14 @@ import {
   IoGitNetworkOutline,
   IoDesktopOutline,
   IoServerOutline,
-  IoFunnelOutline
+  IoFunnelOutline,
+  IoSparkles
 } from 'react-icons/io5'
 import { MdTag } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from 'next-themes'
 import { calcTraffic } from '@renderer/utils/calc'
+import { useAppConfig } from '@renderer/hooks/use-app-config'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -244,6 +246,48 @@ function getTextWidth(text: string, font = '600 11px sans-serif'): number {
   return ctx.measureText(text).width
 }
 
+// ─── Particle flow ────────────────────────────────────────────────────────────
+
+interface LinkSeg {
+  sx: number
+  sy: number
+  c1x: number
+  c1y: number
+  c2x: number
+  c2y: number
+  tx: number
+  ty: number
+  count: number
+  traffic: number
+  colorType: NodeType
+}
+
+function cubicPoint(seg: LinkSeg, t: number): [number, number] {
+  const u = 1 - t
+  const a = u * u * u
+  const b = 3 * u * u * t
+  const c = 3 * u * t * t
+  const d = t * t * t
+  return [
+    a * seg.sx + b * seg.c1x + c * seg.c2x + d * seg.tx,
+    a * seg.sy + b * seg.c1y + c * seg.c2y + d * seg.ty
+  ]
+}
+
+// canvas 2D 不解析 CSS 变量，需读取计算后的 HSL 三元组
+function cssVarColor(type: NodeType): string {
+  if (type === 'root') return 'hsl(0 0% 50%)'
+  const varNames: Record<Exclude<NodeType, 'root'>, string> = {
+    client: '--heroui-primary',
+    port: '--heroui-warning',
+    rule: '--heroui-secondary',
+    group: '--heroui-success',
+    proxy: '--heroui-danger'
+  }
+  const raw = getComputedStyle(document.documentElement).getPropertyValue(varNames[type]).trim()
+  return `hsl(${raw})`
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 const NetworkTopologyCard: React.FC = () => {
@@ -252,11 +296,43 @@ const NetworkTopologyCard: React.FC = () => {
 
   const svgRef = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const linksRef = useRef<LinkSeg[]>([])
 
   const [connections, setConnections] = useState<IMihomoConnectionDetail[]>([])
   const [isPaused, setIsPaused] = useState(false)
   const frozenRef = useRef<IMihomoConnectionDetail[] | null>(null)
   const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(new Set())
+
+  const { appConfig } = useAppConfig()
+  const disableAnimations = appConfig?.disableAnimations ?? false
+  const [particlesOn, setParticlesOn] = useState(
+    () => localStorage.getItem('network-topology-particles') !== '0'
+  )
+  const particlesEnabled = particlesOn && !disableAnimations
+
+  const toggleParticles = useCallback((): void => {
+    setParticlesOn((prev) => {
+      localStorage.setItem('network-topology-particles', prev ? '0' : '1')
+      return !prev
+    })
+  }, [])
+
+  const resizeCanvas = useCallback((): void => {
+    const canvas = canvasRef.current
+    const svgEl = svgRef.current
+    if (!canvas || !svgEl) return
+    const w = parseFloat(svgEl.getAttribute('width') || '0')
+    const h = parseFloat(svgEl.getAttribute('height') || '0')
+    if (!w || !h) return
+    const dpr = window.devicePixelRatio || 1
+    if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+      canvas.width = Math.round(w * dpr)
+      canvas.height = Math.round(h * dpr)
+      canvas.style.width = `${w}px`
+      canvas.style.height = `${h}px`
+    }
+  }, [])
 
   // IPC listener
   useEffect(() => {
@@ -328,6 +404,10 @@ const NetworkTopologyCard: React.FC = () => {
     if (!svgEl || !containerEl) return
     if (!hierarchyData.children || hierarchyData.children.length === 0) {
       d3.select(svgEl).selectAll('*').remove()
+      linksRef.current = []
+      const canvas = canvasRef.current
+      const ctx = canvas?.getContext('2d')
+      if (canvas && ctx) ctx.clearRect(0, 0, canvas.width, canvas.height)
       return
     }
 
@@ -441,6 +521,31 @@ const NetworkTopologyCard: React.FC = () => {
       .attr('stroke-opacity', 0.3)
       .attr('stroke-width', (d) => Math.max(1, Math.min(4, d.target.data.connections / 5)))
 
+    // 粒子层几何：与 link 贝塞尔曲线一致，由 rAF 循环采样
+    linksRef.current = visibleLinks.map((l) => {
+      const src = l.source as d3.HierarchyPointNode<TopologyNodeData>
+      const tgt = l.target as d3.HierarchyPointNode<TopologyNodeData>
+      const sx = src.y + getNodeWidth(src) / 2
+      const sy = src.x
+      const tx = tgt.y - getNodeWidth(tgt) / 2
+      const ty = tgt.x
+      const mx = (sx + tx) / 2
+      return {
+        sx,
+        sy,
+        c1x: mx,
+        c1y: sy,
+        c2x: mx,
+        c2y: ty,
+        tx,
+        ty,
+        count: tgt.data.connections,
+        traffic: tgt.data.traffic,
+        colorType: tgt.data.type
+      }
+    })
+    resizeCanvas()
+
     // Nodes
     const nodes = g
       .selectAll('.node')
@@ -518,7 +623,73 @@ const NetworkTopologyCard: React.FC = () => {
       .text(
         (d) => `${d.data.name}\n${d.data.connections} connections\n${calcTraffic(d.data.traffic)}`
       )
-  }, [hierarchyData, resolvedTheme])
+  }, [hierarchyData, resolvedTheme, resizeCanvas])
+
+  // 粒子流：canvas 覆盖层，按连接数决定密度、按流量决定速度
+  useEffect(() => {
+    const canvas = canvasRef.current
+    const ctx = canvas?.getContext('2d')
+    if (!canvas || !ctx) return
+    if (!particlesEnabled) {
+      linksRef.current = []
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      return
+    }
+    const colors: Partial<Record<NodeType, string>> = {}
+    const colorOf = (type: NodeType): string => {
+      let color = colors[type]
+      if (!color) {
+        color = cssVarColor(type)
+        colors[type] = color
+      }
+      return color
+    }
+    const dpr = window.devicePixelRatio || 1
+    let raf = 0
+    let last = performance.now()
+    const phases: number[] = []
+    const draw = (now: number): void => {
+      raf = requestAnimationFrame(draw)
+      const dt = Math.min(0.05, (now - last) / 1000)
+      last = now
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      const w = canvas.width / dpr
+      const h = canvas.height / dpr
+      const segs = linksRef.current
+      if (segs.length === 0) {
+        ctx.clearRect(0, 0, w, h)
+        return
+      }
+      // 暂停时保留最后一帧，冻结画面
+      if (isPaused) return
+      ctx.clearRect(0, 0, w, h)
+      segs.forEach((seg, i) => {
+        if (phases[i] === undefined) phases[i] = (i * 0.37) % 1
+        const speed = 0.1 + Math.log10(1 + seg.traffic) * 0.12
+        phases[i] = (phases[i] + speed * dt) % 1
+        const dots = Math.min(4, Math.max(1, Math.round(seg.count / 3)))
+        const color = colorOf(seg.colorType)
+        ctx.fillStyle = color
+        for (let k = 0; k < dots; k++) {
+          const t = (phases[i] + k / dots) % 1
+          const [x, y] = cubicPoint(seg, t)
+          const fade = Math.sin(Math.PI * t)
+          const [bx, by] = cubicPoint(seg, Math.max(0, t - 0.035))
+          ctx.globalAlpha = 0.22 * fade
+          ctx.beginPath()
+          ctx.arc(bx, by, 3.2, 0, Math.PI * 2)
+          ctx.fill()
+          ctx.globalAlpha = 0.8 * fade
+          ctx.beginPath()
+          ctx.arc(x, y, 2, 0, Math.PI * 2)
+          ctx.fill()
+        }
+      })
+      ctx.globalAlpha = 1
+    }
+    raf = requestAnimationFrame(draw)
+    return (): void => cancelAnimationFrame(raf)
+  }, [particlesEnabled, isPaused, resolvedTheme])
 
   // ResizeObserver
   useEffect(() => {
@@ -530,10 +701,11 @@ const NetworkTopologyCard: React.FC = () => {
       if (svgRef.current && containerRef.current) {
         svgRef.current.setAttribute('width', String(containerRef.current.clientWidth))
       }
+      resizeCanvas()
     })
     observer.observe(el)
     return () => observer.disconnect()
-  }, [])
+  }, [resizeCanvas])
 
   const togglePause = useCallback(() => {
     if (isPaused) {
@@ -579,6 +751,16 @@ const NetworkTopologyCard: React.FC = () => {
             size="sm"
             isIconOnly
             variant="light"
+            onPress={toggleParticles}
+            className={`h-7 w-7 min-w-0 ${particlesEnabled ? 'text-primary' : ''}`}
+            title={t('network.topology.particles')}
+          >
+            <IoSparkles size={16} />
+          </Button>
+          <Button
+            size="sm"
+            isIconOnly
+            variant="light"
             onPress={togglePause}
             className={`h-7 w-7 min-w-0 ${isPaused ? 'text-warning' : ''}`}
             title={isPaused ? t('network.topology.resume') : t('network.topology.pause')}
@@ -620,7 +802,10 @@ const NetworkTopologyCard: React.FC = () => {
         </div>
       ) : (
         <div ref={containerRef} className="overflow-x-auto touch-pan-x touch-pan-y">
-          <svg ref={svgRef} style={{ minHeight: '400px' }} />
+          <div className="relative">
+            <canvas ref={canvasRef} className="pointer-events-none absolute left-0 top-0" />
+            <svg ref={svgRef} className="relative" style={{ minHeight: '400px' }} />
+          </div>
         </div>
       )}
     </div>
