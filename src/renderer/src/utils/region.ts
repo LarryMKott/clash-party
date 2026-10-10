@@ -37,6 +37,11 @@ export const REGIONS: RegionInfo[] = [
 
 const REGION_BY_ISO = new Map(REGIONS.map((r) => [r.iso, r]))
 
+// 已知 ISO 国家码 → 地区坐标（战争桌面按连接目的地国家码直接定位）
+export function getRegionByIso(iso: string): RegionInfo | undefined {
+  return REGION_BY_ISO.get(iso.toUpperCase())
+}
+
 // 关键词按此顺序短路匹配；短代码用 \b 防止误命中（如 US 匹配到 RUSSIA）
 const REGION_KEYWORDS: [string, RegExp][] = [
   ['HK', /香港|港區?节点|Hong ?Kong|\bHK\b/i],

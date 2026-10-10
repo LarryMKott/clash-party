@@ -4,6 +4,7 @@ import { NavigateFunction, useLocation, useNavigate, useRoutes } from 'react-rou
 import OutboundModeSwitcher from '@renderer/components/sider/outbound-mode-switcher'
 import { Button, Divider, Modal, ModalBody, ModalContent, ModalHeader } from '@heroui/react'
 import { IoArrowForward, IoSettings } from 'react-icons/io5'
+import { IoPulseOutline } from 'react-icons/io5'
 import { toast } from '@renderer/components/base/toast'
 import routes, { useDeferredRoutePreload } from '@renderer/routes'
 import UpdaterButton from '@renderer/components/updater/updater-button'
@@ -31,6 +32,7 @@ export { getDriver }
 
 const siderCardsPromise = import('@renderer/components/sider/sider-cards')
 const SiderCards = lazy(() => siderCardsPromise)
+const WarRoom = lazy(() => import('@renderer/components/warroom/war-room'))
 /* eslint-disable react/prop-types */
 
 const ModeSelection: React.FC<{ onSelect: (mode: 'standard' | 'simple') => Promise<void> }> = ({
@@ -145,9 +147,10 @@ const App: React.FC = () => {
   useDnsOverrideAutoDisabledNotice()
   const narrowWidth = platform === 'darwin' ? 70 : 60
   const [siderWidthValue, setSiderWidthValue] = useState(siderWidth)
-  const siderWidthValueRef = useRef(siderWidthValue)
+  const siderWidthValueRef = useRef(siderWidth)
   const [resizing, setResizing] = useState(false)
   const resizingRef = useRef(resizing)
+  const [warRoomOpen, setWarRoomOpen] = useState(false)
   useDeferredRoutePreload()
   const { setTheme, systemTheme } = useTheme()
   const navigate: NavigateFunction = useNavigate()
@@ -264,6 +267,18 @@ const App: React.FC = () => {
             <SiderCards iconOnly />
           </Suspense>
           <div className="px-2 pt-2 pb-4 flex shrink-0 flex-col items-center space-y-2">
+            <Button
+              size="sm"
+              className="app-nodrag"
+              isIconOnly
+              variant="light"
+              onPress={() => {
+                setWarRoomOpen(true)
+              }}
+              title={t('warroom.title')}
+            >
+              <IoPulseOutline className="text-[20px]" />
+            </Button>
             <UpdaterButton iconOnly={true} />
             <OutboundModeSwitcher iconOnly />
             <Button
@@ -294,6 +309,18 @@ const App: React.FC = () => {
                 <h3 className="text-lg font-bold leading-8">Clash Party</h3>
               </div>
               <UpdaterButton />
+              <Button
+                size="sm"
+                className="app-nodrag"
+                isIconOnly
+                variant="light"
+                onPress={() => {
+                  setWarRoomOpen(true)
+                }}
+                title={t('warroom.title')}
+              >
+                <IoPulseOutline className="text-[20px]" />
+              </Button>
               <Button
                 size="sm"
                 className="app-nodrag"
@@ -341,6 +368,9 @@ const App: React.FC = () => {
           <FirstContentReady />
         </Suspense>
       </div>
+      <Suspense fallback={null}>
+        {warRoomOpen && <WarRoom onClose={() => setWarRoomOpen(false)} />}
+      </Suspense>
     </div>
   )
 }
