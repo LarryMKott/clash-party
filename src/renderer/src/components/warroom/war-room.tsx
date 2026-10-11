@@ -14,6 +14,7 @@ import BootSequence from './boot-sequence'
 import PanelShell from './panel-shell'
 import RegionTops from './region-tops'
 import AmbientParticles from './ambient-particles'
+import AuroraGlow from './aurora-glow'
 
 interface Props {
   onClose: () => void
@@ -201,10 +202,13 @@ const WarRoomBase: React.FC<Props> = ({ onClose }) => {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
     >
+      {/* 极光带：背景大尺度漂移色带 */}
+      <AuroraGlow />
+
       {/* HUD 装饰层：网格 / 刻度 / 角括号 / 扫描线 / 暗角 */}
       <HudOverlay />
 
-      {/* 环境粒子层：星尘上升，流速随实时流量 */}
+      {/* 环境粒子层：星尘上升 + 流星 + 速率突增迸发 */}
       <AmbientParticles totalRate={traffic.up + traffic.down} />
 
       {/* 顶栏：标题 + 翻牌速率 + 状态簇 + 退出 */}

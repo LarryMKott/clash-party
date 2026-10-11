@@ -16,10 +16,30 @@ interface Particle {
   alpha: number
 }
 
-const COUNT = 64
+interface Meteor {
+  x: number
+  y: number
+  vx: number
+  vy: number
+  life: number
+  maxLife: number
+}
 
-// 环境粒子层：低密度星尘缓缓上升，流速与亮度随实时总流量增强，
-// 高流量时部分粒子拉出短拖尾。纯装饰，pointer-events-none。
+interface Burst {
+  x: number
+  y: number
+  vx: number
+  vy: number
+  life: number
+  maxLife: number
+  size: number
+}
+
+const COUNT = 64
+const SURGE_INTERVAL_MS = 5000
+
+// 环境粒子层：星尘缓缓上升 + 随机流星 + 速率突增迸发。
+// 流速与亮度随实时总流量增强。纯装饰，pointer-events-none。
 const AmbientParticlesBase: React.FC<Props> = ({ totalRate }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rateRef = useRef(totalRate)
@@ -56,6 +76,13 @@ const AmbientParticlesBase: React.FC<Props> = ({ totalRate }) => {
       alpha: 0.14 + Math.random() * 0.3
     }))
 
+    const meteors: Meteor[] = []
+    let nextMeteorAt = performance.now() + 2200
+
+    const bursts: Burst[] = []
+    let smoothedRate = 0
+    let lastSurgeAt = 0
+
     let last = performance.now()
     const draw = (now: number): void => {
       raf = requestAnimationFrame(draw)
@@ -66,10 +93,12 @@ const AmbientParticlesBase: React.FC<Props> = ({ totalRate }) => {
       ctx.clearRect(0, 0, w, h)
 
       const rate = rateRef.current
-      // 流量 → 速度/亮度系数：空闲 1.0，狂飙 ~4x
+      // 平滑速率用于突增检测
+      smoothedRate += (rate - smoothedRate) * Math.min(1, dt * 1.2)
       const energy = 1 + Math.log10(1 + rate) / 1.6
       const time = now / 1000
 
+      // ── 星尘 ─────────────────────────────────────────────
       for (const p of particles) {
         p.y -= (p.baseSpeed * energy * dt) / h
         if (p.y < -0.03) {
@@ -85,7 +114,6 @@ const AmbientParticlesBase: React.FC<Props> = ({ totalRate }) => {
         ctx.globalAlpha = alpha
         ctx.fillStyle = '#9ecbff'
         if (speedTail) {
-          // 高流量拖尾：短竖线
           ctx.strokeStyle = '#9ecbff'
           ctx.lineWidth = p.size * 0.7
           ctx.beginPath()
@@ -97,6 +125,104 @@ const AmbientParticlesBase: React.FC<Props> = ({ totalRate }) => {
           ctx.arc(px, py, p.size, 0, Math.PI * 2)
           ctx.fill()
         }
+      }
+
+      // ── 流星 ─────────────────────────────────────────────
+      if (now >= nextMeteorAt) {
+        const busyRate = rate > 2 * 1024 * 1024 ? 0.7 : 1
+        nextMeteorAt = now + (3000 + Math.random() * 5200) * busyRate
+        const fromLeft = Math.random() > 0.5
+        meteors.push({
+          x: (fromLeft ? 0.05 + Math.random() * 0.35 : 0.6 + Math.random() * 0.35) * w,
+          y: (0.02 + Math.random() * 0.2) * h,
+          vx: (fromLeft ? 1 : -1) * (260 + Math.random() * 240),
+          vy: 150 + Math.random() * 120,
+          life: 0,
+          maxLife: 0.9 + Math.random() * 0.5
+        })
+      }
+      for (let i = meteors.length - 1; i >= 0; i--) {
+        const m = meteors[i]
+        m.life += dt
+        if (m.life >= m.maxLife) {
+          meteors.splice(i, 1)
+          continue
+        }
+        m.x += m.vx * dt
+        m.y += m.vy * dt
+        const fade = Math.sin((m.life / m.maxLife) * Math.PI)
+        const tail = 90 + m.maxLife * 60
+        const norm = Math.hypot(m.vx, m.vy) || 1
+        const nx = m.vx / norm
+        const ny = m.vy / norm
+        const grad = ctx.createLinearGradient(m.x, m.y, m.x - nx * tail, m.y - ny * tail)
+        grad.addColorStop(0, `rgba(214,236,255,${0.85 * fade})`)
+        grad.addColorStop(1, 'rgba(214,236,255,0)')
+        ctx.globalAlpha = 1
+        ctx.strokeStyle = grad
+        ctx.lineWidth = 1.6
+        ctx.beginPath()
+        ctx.moveTo(m.x, m.y)
+        ctx.lineTo(m.x - nx * tail, m.y - ny * tail)
+        ctx.stroke()
+        ctx.fillStyle = `rgba(240,250,255,${0.95 * fade})`
+        ctx.beginPath()
+        ctx.arc(m.x, m.y, 1.8, 0, Math.PI * 2)
+        ctx.fill()
+      }
+
+      // ── 速率突增迸发 ─────────────────────────────────────
+      if (
+        rate > 1.5 * 1024 * 1024 &&
+        rate > smoothedRate * 1.55 &&
+        now - lastSurgeAt > SURGE_INTERVAL_MS
+      ) {
+        lastSurgeAt = now
+        const cx = (0.36 + Math.random() * 0.28) * w
+        for (let i = 0; i < 16; i++) {
+          const angle = -Math.PI / 2 + (Math.random() - 0.5) * 1.5
+          const speed = 260 + Math.random() * 320
+          bursts.push({
+            x: cx + (Math.random() - 0.5) * 60,
+            y: h * 0.94,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life: 0,
+            maxLife: 0.8 + Math.random() * 0.4,
+            size: 1.4 + Math.random() * 2
+          })
+        }
+        bursts.push({ x: cx, y: h * 0.9, vx: 0, vy: 0, life: 0, maxLife: 0.5, size: 0 }) // 辉光标记
+      }
+      for (let i = bursts.length - 1; i >= 0; i--) {
+        const b = bursts[i]
+        b.life += dt
+        if (b.life >= b.maxLife) {
+          bursts.splice(i, 1)
+          continue
+        }
+        const fade = 1 - b.life / b.maxLife
+        if (b.size === 0) {
+          // 中央辉光
+          const r = 60 + b.life * 260
+          const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, r)
+          grad.addColorStop(0, `rgba(147,197,253,${0.16 * fade})`)
+          grad.addColorStop(1, 'rgba(147,197,253,0)')
+          ctx.globalAlpha = 1
+          ctx.fillStyle = grad
+          ctx.beginPath()
+          ctx.arc(b.x, b.y, r, 0, Math.PI * 2)
+          ctx.fill()
+          continue
+        }
+        b.x += b.vx * dt
+        b.y += b.vy * dt
+        b.vy += 60 * dt
+        ctx.globalAlpha = 0.9 * fade
+        ctx.fillStyle = '#bfdbfe'
+        ctx.beginPath()
+        ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2)
+        ctx.fill()
       }
       ctx.globalAlpha = 1
     }
