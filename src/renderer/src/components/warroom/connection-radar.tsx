@@ -5,6 +5,8 @@ interface Props {
   connections: IMihomoConnectionDetail[]
   /** 连接 id → 当前速率（字节/秒） */
   speeds: Map<string, number>
+  /** 嵌入 PanelShell 时隐藏自带标题（默认 false） */
+  compact?: boolean
 }
 
 const MAX_DOTS = 72
@@ -49,7 +51,7 @@ interface Dot {
   angle: number
 }
 
-const ConnectionRadarBase: React.FC<Props> = ({ connections, speeds }) => {
+const ConnectionRadarBase: React.FC<Props> = ({ connections, speeds, compact = false }) => {
   const { t } = useTranslation()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const dataRef = useRef({ connections, speeds })
@@ -272,10 +274,16 @@ const ConnectionRadarBase: React.FC<Props> = ({ connections, speeds }) => {
   }, [])
 
   return (
-    <div className="flex h-full flex-col items-center gap-2">
-      <span className="text-[11px] tracking-[0.25em] text-foreground/45">{t('warroom.radar')}</span>
-      <canvas ref={canvasRef} className="aspect-square w-full max-w-[280px] flex-1" />
-      <span className="text-[11px] text-foreground/40">{t('warroom.connections')}</span>
+    <div className="flex h-full min-h-0 w-full flex-col items-center gap-1">
+      {!compact && (
+        <span className="text-[11px] tracking-[0.25em] text-foreground/45">
+          {t('warroom.radar')}
+        </span>
+      )}
+      <canvas ref={canvasRef} className="aspect-square w-full max-w-[300px] shrink-0" />
+      {!compact && (
+        <span className="text-[11px] text-foreground/40">{t('warroom.connections')}</span>
+      )}
     </div>
   )
 }

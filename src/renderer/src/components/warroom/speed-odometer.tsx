@@ -6,6 +6,8 @@ interface Props {
   value: number
   label: string
   color: string
+  /** 会话峰值（字节/秒），显示为小字 */
+  peak?: number
 }
 
 function formatSpeed(bytes: number): string {
@@ -44,8 +46,12 @@ const DigitRoll: React.FC<{ char: string }> = ({ char }) => {
   )
 }
 
-const SpeedOdometerBase: React.FC<Props> = ({ value, label, color }) => {
+const SpeedOdometerBase: React.FC<Props> = ({ value, label, color, peak }) => {
   const chars = useMemo(() => formatSpeed(value).split(''), [value])
+  const peakText = useMemo(
+    () => (peak && peak > 0 ? `PEAK ${formatSpeed(peak)}` : undefined),
+    [peak]
+  )
 
   return (
     <div className="flex flex-col items-center gap-1">
@@ -69,6 +75,11 @@ const SpeedOdometerBase: React.FC<Props> = ({ value, label, color }) => {
         <span className="ml-1 text-[18px] font-semibold opacity-80">/s</span>
       </div>
       <span className="text-xs tracking-[0.2em] text-foreground/50">{label}</span>
+      {peakText && (
+        <span className="font-mono text-[10px] tabular-nums tracking-wider text-foreground/35">
+          {peakText}
+        </span>
+      )}
     </div>
   )
 }

@@ -4,11 +4,13 @@ import { useTranslation } from 'react-i18next'
 interface Props {
   /** 连接 id → 当前速率（字节/秒） */
   speeds: Map<string, number>
+  /** 嵌入 PanelShell 时隐藏自带标题（默认 false） */
+  compact?: boolean
 }
 
 const BARS = 36
 
-const TrafficSpectrumBase: React.FC<Props> = ({ speeds }) => {
+const TrafficSpectrumBase: React.FC<Props> = ({ speeds, compact = false }) => {
   const { t } = useTranslation()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const speedsRef = useRef(speeds)
@@ -90,10 +92,12 @@ const TrafficSpectrumBase: React.FC<Props> = ({ speeds }) => {
   }, [])
 
   return (
-    <div className="flex h-full flex-col items-center gap-2">
-      <span className="text-[11px] tracking-[0.25em] text-foreground/45">
-        {t('warroom.spectrum')}
-      </span>
+    <div className="flex h-full min-h-0 flex-col items-center gap-2">
+      {!compact && (
+        <span className="shrink-0 text-[11px] tracking-[0.25em] text-foreground/45">
+          {t('warroom.spectrum')}
+        </span>
+      )}
       <canvas ref={canvasRef} className="min-h-0 w-full flex-1" />
     </div>
   )

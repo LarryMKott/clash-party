@@ -11,6 +11,8 @@ import LogTicker from './log-ticker'
 import NodeMatrix from './node-matrix'
 import HudOverlay from './hud-overlay'
 import BootSequence from './boot-sequence'
+import PanelShell from './panel-shell'
+import RegionTops from './region-tops'
 
 interface Props {
   onClose: () => void
@@ -39,6 +41,19 @@ function extractDestIso(conn: IMihomoConnectionDetail): string | null {
 
 function pad(n: number): string {
   return String(n).padStart(2, '0')
+}
+
+function fmtBps(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B/s'
+  if (bytes < 1024) return `${Math.round(bytes)} B/s`
+  const units = ['KB/s', 'MB/s', 'GB/s', 'TB/s']
+  let v = bytes
+  let unit = 0
+  while (v >= 1024 && unit < units.length - 1) {
+    v /= 1024
+    unit++
+  }
+  return `${v >= 100 ? v.toFixed(0) : v.toFixed(1)} ${units[unit]}`
 }
 
 // 顶栏状态簇：LIVE 心跳 + 系统时钟 + 战情室在线时长
@@ -88,6 +103,7 @@ const WarRoomBase: React.FC<Props> = ({ onClose }) => {
   const [connections, setConnections] = useState<IMihomoConnectionDetail[]>([])
   const [speeds, setSpeeds] = useState<Map<string, number>>(new Map())
   const [traffic, setTraffic] = useState({ up: 0, down: 0 })
+  const [peak, setPeak] = useState({ up: 0, down: 0 })
   const [log, setLog] = useState<IMihomoLogInfo | null>(null)
   const [booting, setBooting] = useState(true)
   const [mounted, setMounted] = useState(false)
@@ -137,7 +153,13 @@ const WarRoomBase: React.FC<Props> = ({ onClose }) => {
 
     const onTraffic = (_e: unknown, ...args: unknown[]): void => {
       const info = args[0] as { up: number; down: number }
-      setTraffic({ up: info.up ?? 0, down: info.down ?? 0 })
+      const up = info.up ?? 0
+      const down = info.down ?? 0
+      setTraffic({ up, down })
+      setPeak((prev) => ({
+        up: Math.max(prev.up, up),
+        down: Math.max(prev.down, down)
+      }))
     }
     const unsubTraffic = window.electron.ipcRenderer.on('mihomoTraffic', onTraffic)
 
@@ -205,9 +227,19 @@ const WarRoomBase: React.FC<Props> = ({ onClose }) => {
           transition={{ type: 'spring', stiffness: 200, damping: 22, delay: 0.08 }}
           className="pointer-events-auto flex items-center gap-8 rounded-xl border border-white/10 bg-black/40 px-8 py-3 text-white backdrop-blur-md"
         >
-          <SpeedOdometer value={traffic.up} label={t('warroom.speed.up')} color="#34d399" />
+          <SpeedOdometer
+            value={traffic.up}
+            peak={peak.up}
+            label={t('warroom.speed.up')}
+            color="#34d399"
+          />
           <div className="h-10 w-px bg-white/15" />
-          <SpeedOdometer value={traffic.down} label={t('warroom.speed.down')} color="#60a5fa" />
+          <SpeedOdometer
+            value={traffic.down}
+            peak={peak.down}
+            label={t('warroom.speed.down')}
+            color="#60a5fa"
+          />
         </motion.div>
 
         <motion.div
@@ -231,28 +263,57 @@ const WarRoomBase: React.FC<Props> = ({ onClose }) => {
         </motion.div>
       </div>
 
-      {/* 主区：雷达 | 实时地球 | 频谱 */}
+      {/* 主区：雷达+地区榜 | 实时地球 | 频谱+读数（栏宽响应式） */}
       <motion.div
-        className="absolute inset-x-0 bottom-[102px] top-[92px] grid grid-cols-[300px_1fr_300px] items-stretch gap-4 px-6"
+        className="absolute inset-x-0 bottom-[102px] top-[92px] grid grid-cols-[minmax(230px,270px)_1fr_minmax(230px,270px)] items-stretch gap-4 px-6 2xl:grid-cols-[320px_1fr_320px]"
         initial={{ opacity: 0, scale: 0.97 }}
         animate={mounted ? { opacity: 1, scale: 1 } : {}}
         transition={{ duration: 0.45, delay: 0.15 }}
       >
-        <div
-          className="flex min-h-0 items-center justify-center rounded-2xl border border-white/5 bg-black/25 p-3 backdrop-blur-sm"
-          onClick={stop}
+        <PanelShell
+          label={t('warroom.radar')}
+          accent="#34d399"
+          meta={`${connections.length} ${t('warroom.connections')}`}
         >
-          <ConnectionRadar connections={connections} speeds={speeds} />
-        </div>
+          <div className="flex h-full min-h-0 flex-col items-center gap-2 p-2">
+            <div className="min-h-0 flex-1">
+              <ConnectionRadar connections={connections} speeds={speeds} compact />
+            </div>
+            <RegionTops activeByIso={activeByIso} />
+          </div>
+        </PanelShell>
         <div className="relative min-h-0" onClick={stop}>
           <LiveGlobe activeByIso={activeByIso} />
         </div>
-        <div
-          className="flex min-h-0 items-center rounded-2xl border border-white/5 bg-black/25 p-3 backdrop-blur-sm"
-          onClick={stop}
+        <PanelShell
+          label={t('warroom.spectrum')}
+          accent="#60a5fa"
+          meta={`∑ ${Math.round(traffic.up + traffic.down)} B/s`}
         >
-          <TrafficSpectrum speeds={speeds} />
-        </div>
+          <div className="flex h-full min-h-0 flex-col gap-2 p-2">
+            <div className="grid shrink-0 grid-cols-2 gap-2">
+              <div className="rounded-lg border border-emerald-400/15 bg-emerald-400/5 px-2 py-1.5">
+                <div className="text-[9px] tracking-[0.2em] text-foreground/40">
+                  {t('warroom.speed.up')}
+                </div>
+                <div className="font-mono text-[12px] font-semibold tabular-nums text-emerald-300">
+                  {fmtBps(traffic.up)}
+                </div>
+              </div>
+              <div className="rounded-lg border border-sky-400/15 bg-sky-400/5 px-2 py-1.5">
+                <div className="text-[9px] tracking-[0.2em] text-foreground/40">
+                  {t('warroom.speed.down')}
+                </div>
+                <div className="font-mono text-[12px] font-semibold tabular-nums text-sky-300">
+                  {fmtBps(traffic.down)}
+                </div>
+              </div>
+            </div>
+            <div className="min-h-0 flex-1">
+              <TrafficSpectrum speeds={speeds} compact />
+            </div>
+          </div>
+        </PanelShell>
       </motion.div>
 
       {/* 底栏：连接矩阵 + 日志 ticker */}
