@@ -13,6 +13,7 @@ import HudOverlay from './hud-overlay'
 import BootSequence from './boot-sequence'
 import PanelShell from './panel-shell'
 import RegionTops from './region-tops'
+import AmbientParticles from './ambient-particles'
 
 interface Props {
   onClose: () => void
@@ -202,6 +203,9 @@ const WarRoomBase: React.FC<Props> = ({ onClose }) => {
     >
       {/* HUD 装饰层：网格 / 刻度 / 角括号 / 扫描线 / 暗角 */}
       <HudOverlay />
+
+      {/* 环境粒子层：星尘上升，流速随实时流量 */}
+      <AmbientParticles totalRate={traffic.up + traffic.down} />
 
       {/* 顶栏：标题 + 翻牌速率 + 状态簇 + 退出 */}
       <div className="pointer-events-none absolute left-0 right-0 top-0 z-10 flex items-start justify-between gap-4 p-4 pl-6 pr-6">
