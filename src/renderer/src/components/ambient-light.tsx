@@ -1,11 +1,27 @@
 import React, { memo, useEffect, useRef } from 'react'
 
-// 流量等级 → 边缘光颜色（空闲呼吸蓝 → 下载狂飙红色脉冲）
-const LEVELS = [
+// 边缘氛围灯：上下边由下行驱动（蓝色系），左右边由上行驱动（绿色系），
+// 各自独立四级变色 + 正弦呼吸；空闲时统一慢呼吸。
+interface Level {
+  max: number
+  color: string
+  speed: number
+  base: number
+  amp: number
+}
+
+const DOWN_LEVELS: Level[] = [
   { max: 256 * 1024, color: '96,165,250', speed: 0.7, base: 0.16, amp: 0.1 },
   { max: 2 * 1024 * 1024, color: '56,189,248', speed: 1.1, base: 0.26, amp: 0.16 },
-  { max: 8 * 1024 * 1024, color: '251,191,36', speed: 1.8, base: 0.34, amp: 0.2 },
-  { max: Infinity, color: '248,113,113', speed: 3.2, base: 0.4, amp: 0.28 }
+  { max: 8 * 1024 * 1024, color: '125,211,252', speed: 1.8, base: 0.34, amp: 0.2 },
+  { max: Infinity, color: '96,165,250', speed: 3.2, base: 0.42, amp: 0.3 }
+]
+
+const UP_LEVELS: Level[] = [
+  { max: 128 * 1024, color: '110,231,183', speed: 0.7, base: 0.14, amp: 0.09 },
+  { max: 1024 * 1024, color: '52,211,153', speed: 1.1, base: 0.24, amp: 0.15 },
+  { max: 6 * 1024 * 1024, color: '167,243,208', speed: 1.8, base: 0.32, amp: 0.19 },
+  { max: Infinity, color: '52,211,153', speed: 3.2, base: 0.4, amp: 0.28 }
 ]
 
 const THICKNESS = 42
@@ -17,55 +33,71 @@ const AmbientLightBase: React.FC = () => {
   const rightRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const edges = [
-      { el: topRef.current, phase: 0, axis: 'y' as const },
-      { el: bottomRef.current, phase: Math.PI, axis: 'y' as const },
-      { el: leftRef.current, phase: Math.PI / 2, axis: 'x' as const },
-      { el: rightRef.current, phase: -Math.PI / 2, axis: 'x' as const }
-    ].filter((e) => e.el)
-
     let raf = 0
-    let levelIndex = 0
-    let levelBlend = 0
-    let lastTraffic = 0
+    let lastTraffic = { up: 0, down: 0 }
 
     const onTraffic = (_e: unknown, ...args: unknown[]): void => {
       const info = args[0] as { up: number; down: number }
-      lastTraffic = (info.up ?? 0) + (info.down ?? 0)
+      lastTraffic = { up: info.up ?? 0, down: info.down ?? 0 }
     }
     const unsub = window.electron.ipcRenderer.on('mihomoTraffic', onTraffic)
+
+    const pickLevel = (levels: Level[], traffic: number): Level => {
+      for (const level of levels) {
+        if (traffic <= level.max) return level
+      }
+      return levels[levels.length - 1]
+    }
+
+    const paint = (
+      el: HTMLDivElement | null,
+      level: Level,
+      phase: number,
+      time: number,
+      gradient: (c: string) => string
+    ): void => {
+      if (!el) return
+      const pulse =
+        level.base + level.amp * (0.5 + 0.5 * Math.sin(time * level.speed * Math.PI + phase))
+      el.style.opacity = pulse.toFixed(3)
+      el.style.background = gradient(level.color)
+    }
 
     const draw = (now: number): void => {
       raf = requestAnimationFrame(draw)
       const time = now / 1000
-      const target = LEVELS.findIndex((l) => lastTraffic <= l.max)
-      // 平滑过渡颜色等级，避免跳变
-      levelBlend += (1 - levelBlend) * 0.06
-      if (target !== levelIndex) {
-        levelIndex = levelBlend > 0.95 ? target : levelIndex
-      }
-      const level = LEVELS[levelIndex]
-      const pulse = level.base + level.amp * (0.5 + 0.5 * Math.sin(time * level.speed * Math.PI))
+      const down = pickLevel(DOWN_LEVELS, lastTraffic.down)
+      const up = pickLevel(UP_LEVELS, lastTraffic.up)
 
-      for (const edge of edges) {
-        const el = edge.el
-        if (!el) continue
-        el.style.opacity = pulse.toFixed(3)
-        const c = level.color
-        el.style.background =
-          edge.axis === 'y'
-            ? `linear-gradient(to bottom, rgba(${c},0.5), rgba(${c},0.12) 55%, transparent)`
-            : `linear-gradient(to right, rgba(${c},0.5), rgba(${c},0.12) 55%, transparent)`
-      }
-      // 对边用反向渐变
-      if (edges[1].el) {
-        const c = level.color
-        edges[1].el.style.background = `linear-gradient(to top, rgba(${c},0.5), rgba(${c},0.12) 55%, transparent)`
-      }
-      if (edges[3].el) {
-        const c = level.color
-        edges[3].el.style.background = `linear-gradient(to left, rgba(${c},0.5), rgba(${c},0.12) 55%, transparent)`
-      }
+      // 上下边：下行（蓝色系），相位相对；左右边：上行（绿色系）
+      paint(
+        topRef.current,
+        down,
+        0,
+        time,
+        (c) => `linear-gradient(to bottom, rgba(${c},0.5), rgba(${c},0.12) 55%, transparent)`
+      )
+      paint(
+        bottomRef.current,
+        down,
+        Math.PI,
+        time,
+        (c) => `linear-gradient(to top, rgba(${c},0.5), rgba(${c},0.12) 55%, transparent)`
+      )
+      paint(
+        leftRef.current,
+        up,
+        Math.PI / 2,
+        time,
+        (c) => `linear-gradient(to right, rgba(${c},0.5), rgba(${c},0.12) 55%, transparent)`
+      )
+      paint(
+        rightRef.current,
+        up,
+        -Math.PI / 2,
+        time,
+        (c) => `linear-gradient(to left, rgba(${c},0.5), rgba(${c},0.12) 55%, transparent)`
+      )
     }
     raf = requestAnimationFrame(draw)
     return () => {

@@ -484,6 +484,7 @@
   "proxies.locate": "Locate Current Proxy",
   "proxies.globe.title": "Node Globe",
   "proxies.globe.home": "Home",
+  "proxies.globe.regions": "{{count}} regions",
   "proxies.globe.legend": "Graticule & borders are decorative",
   "proxies.globe.untested": "No data",
   "ignition.l1": "Initializing core engine…",

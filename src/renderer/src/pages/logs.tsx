@@ -71,6 +71,7 @@ const Logs: React.FC = () => {
   })
   const [trace, setTrace] = useState(true)
   const [crtMode, setCrtMode] = useState(() => localStorage.getItem(LOGS_CRT_KEY) === '1')
+  const [crtBootCount, setCrtBootCount] = useState(0)
 
   const virtuosoRef = useRef<VirtuosoHandle>(null)
 
@@ -164,6 +165,7 @@ const Logs: React.FC = () => {
             onPress={() => {
               setCrtMode((prev) => {
                 localStorage.setItem(LOGS_CRT_KEY, prev ? '0' : '1')
+                if (!prev) setCrtBootCount((n) => n + 1)
                 return !prev
               })
             }}
@@ -186,9 +188,19 @@ const Logs: React.FC = () => {
         </div>
         <Divider />
       </div>
-      <div className={`relative h-[calc(100vh-100px)] mt-px ${crtMode ? 'logs-crt' : ''}`}>
+      <div className={`relative h-[calc(100vh-100px)] mt-px ${crtMode ? 'logs-crt crt-boot' : ''}`}>
         {crtMode && <LogMatrix />}
         {crtMode && <div className="crt-scanlines pointer-events-none absolute inset-0 z-20" />}
+        {crtMode && (
+          <div
+            key={crtBootCount}
+            className="crt-boot-line pointer-events-none absolute left-0 right-0 z-30 h-6"
+            style={{
+              background:
+                'linear-gradient(to bottom, transparent, rgba(134,239,172,0.28), transparent)'
+            }}
+          />
+        )}
         <Virtuoso
           ref={virtuosoRef}
           data={filteredLogs}

@@ -473,6 +473,7 @@
   "proxies.locate": "یافتن پراکسی فعلی",
   "proxies.globe.title": "کره گره‌ها",
   "proxies.globe.home": "مبدا",
+  "proxies.globe.regions": "{{count}} منطقه",
   "proxies.globe.legend": "تأخیر، میانگین گره‌های منطقه",
   "proxies.globe.untested": "بدون داده",
   "ignition.l1": "در حال راه‌اندازی هسته…",

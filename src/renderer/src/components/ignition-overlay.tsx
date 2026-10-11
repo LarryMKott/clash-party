@@ -2,7 +2,7 @@ import React, { memo, useEffect, useRef, useState } from 'react'
 import { motion } from 'motion/react'
 import { useTranslation } from 'react-i18next'
 import MihomoIcon from './base/mihomo-icon'
-import { mihomoVersion } from '@renderer/utils/ipc'
+import { getVersion, mihomoVersion } from '@renderer/utils/ipc'
 
 // 全局启动点火序列：冷启动一次性开场（sessionStorage 防同会话重复）。
 // 黑屏 → 终端逐行打印 → logo 点亮 → 整层揭起。任何时刻点击/按键可跳过。
@@ -14,6 +14,7 @@ const IgnitionOverlayBase: React.FC<{ onDone: () => void }> = ({ onDone }) => {
   const { t } = useTranslation()
   const [step, setStep] = useState(0)
   const [version, setVersion] = useState('')
+  const [appVersion, setAppVersion] = useState('')
   const finishedRef = useRef(false)
 
   const finish = useRef(() => {})
@@ -27,6 +28,9 @@ const IgnitionOverlayBase: React.FC<{ onDone: () => void }> = ({ onDone }) => {
   useEffect(() => {
     mihomoVersion()
       .then((v) => setVersion(v.version || ''))
+      .catch(() => {})
+    getVersion()
+      .then(setAppVersion)
       .catch(() => {})
     const skip = (): void => finish.current()
     window.addEventListener('keydown', skip)
@@ -73,6 +77,11 @@ const IgnitionOverlayBase: React.FC<{ onDone: () => void }> = ({ onDone }) => {
       >
         <MihomoIcon className="h-20 w-20" />
       </motion.div>
+      {appVersion && (
+        <div className="mt-2 font-mono text-[11px] tracking-[0.3em] text-white/35">
+          v{appVersion}
+        </div>
+      )}
 
       <div className="mt-5 w-[min(420px,80vw)] font-mono text-xs leading-6">
         {lines.slice(0, step).map((line, i) => (

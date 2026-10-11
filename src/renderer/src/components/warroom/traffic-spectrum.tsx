@@ -41,13 +41,14 @@ const TrafficSpectrumBase: React.FC<Props> = ({ speeds }) => {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       ctx.clearRect(0, 0, w, h)
 
-      // 目标高度：按速率降序铺满柱位，其余柱位保持噪声底
+      // 目标高度：按速率降序铺满柱位，其余柱位保持噪声底。
+      // 对数映射（参考刻度 100MB/s）：KB 级流量也有可读的柱高变化
       const sorted = Array.from(speedsRef.current.values()).sort((a, b) => b - a)
-      const max = Math.max(sorted[0] ?? 0, 1024 * 64)
+      const SCALE = Math.log10(1 + 100 * 1024 * 1024)
       for (let i = 0; i < BARS; i++) {
         let target: number
         if (i < sorted.length) {
-          target = Math.max(0.06, Math.min(1, sorted[i] / max))
+          target = Math.max(0.06, Math.min(1, Math.log10(1 + sorted[i]) / SCALE))
         } else {
           // 空闲柱位：微弱噪声底，随时间起伏
           target = 0.03 + 0.02 * Math.abs(Math.sin(now / 900 + i * 0.7))

@@ -217,6 +217,9 @@ const GlobeModalBase: React.FC<{
             <div className="mt-0.5 text-xs text-white/60">
               {resolvedCount} / {nodes.length}
             </div>
+            <div className="mt-0.5 text-xs text-white/45">
+              {t('proxies.globe.regions', { count: Math.max(0, points.length - 1) })}
+            </div>
           </div>
           <div className="pointer-events-auto">
             <Button

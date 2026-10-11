@@ -484,6 +484,7 @@
   "proxies.locate": "定位到当前节点",
   "proxies.globe.title": "节点星图",
   "proxies.globe.home": "本机",
+  "proxies.globe.regions": "{{count}} 个地区",
   "proxies.globe.legend": "延迟为该地区节点平均值",
   "proxies.globe.untested": "无数据",
   "ignition.l1": "正在初始化内核引擎…",

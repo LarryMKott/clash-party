@@ -316,3 +316,37 @@
   color: #fcd34d !important;
   text-shadow: 0 0 8px rgba(251, 191, 36, 0.5);
 }
+
+/* CRT 模式开启瞬间的"信号接入"：过曝收缩 + 一次横扫亮线 */
+@keyframes crt-boot {
+  0% {
+    filter: brightness(3) saturate(0.4);
+    transform: scaleY(0.92);
+  }
+  55% {
+    filter: brightness(1.6);
+    transform: scaleY(1);
+  }
+  100% {
+    filter: brightness(1);
+  }
+}
+
+@keyframes crt-sweep {
+  0% {
+    top: -4%;
+    opacity: 0.9;
+  }
+  100% {
+    top: 104%;
+    opacity: 0.15;
+  }
+}
+
+.crt-boot {
+  animation: crt-boot 0.5s ease-out both;
+}
+
+.crt-boot-line {
+  animation: crt-sweep 0.55s ease-out both;
+}
