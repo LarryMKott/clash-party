@@ -37,6 +37,7 @@ import {
   MdVisibilityOff
 } from 'react-icons/md'
 import { useEffect, useMemo, useRef, useState, useCallback, lazy, Suspense } from 'react'
+import { AnimatePresence, motion } from 'motion/react'
 import { GroupedVirtuoso, GroupedVirtuosoHandle } from 'react-virtuoso'
 import ProxyItem from '@renderer/components/proxies/proxy-item'
 import { IoIosArrowBack } from 'react-icons/io'
@@ -71,6 +72,8 @@ import {
 import GroupEditorModal from '@renderer/components/proxies/group-editor-modal'
 import DeleteResourceButton from '@renderer/components/simple/delete-resource-button'
 import SortableGroup from '@renderer/components/proxies/sortable-group'
+import ArcadeSettle, { type ArcadeSettleData } from '@renderer/components/proxies/arcade-settle'
+import { playHit, playMiss, playSettle } from '@renderer/utils/arcade-audio'
 import { toast } from '@renderer/components/base/toast'
 import type { SimpleObject } from '../../../shared/simple-config'
 
@@ -336,6 +339,19 @@ const Proxies: React.FC = () => {
     return Array.from(byName.values())
   }, [groups])
 
+  // ─── 花活：测速音游化 ──────────────────────────────────────────────────────
+  const arcadeOn = !appConfig?.disableAnimations
+  const [arcadeCombo, setArcadeCombo] = useState<{ groupName: string; combo: number } | null>(null)
+  const [arcadeSettle, setArcadeSettle] = useState<ArcadeSettleData | null>(null)
+  const arcadeSessionRef = useRef<{
+    groupName: string
+    total: number
+    hits: number
+    combo: number
+    maxCombo: number
+    delays: number[]
+  } | null>(null)
+
   const {
     proxyDisplayMode = 'simple',
     proxyDisplayOrder = 'default',
@@ -552,6 +568,19 @@ const Proxies: React.FC = () => {
         return next
       })
 
+      // 音游化：本组测速开启一次连击会话
+      arcadeSessionRef.current = arcadeOn
+        ? {
+            groupName: groups[index].name,
+            total: proxyNames.length,
+            hits: 0,
+            combo: 0,
+            maxCombo: 0,
+            delays: []
+          }
+        : null
+      if (arcadeOn) setArcadeCombo({ groupName: groups[index].name, combo: 0 })
+
       // 限制并发数量
       const result: Promise<void>[] = []
       const runningList: Promise<void>[] = []
@@ -563,6 +592,24 @@ const Proxies: React.FC = () => {
           } catch {
             // ignore
           }
+
+          // 音游判定：命中涨连击、超时断连击
+          const session = arcadeSessionRef.current
+          if (session) {
+            const delay = res?.delay ?? 0
+            if (delay > 0) {
+              session.combo += 1
+              session.hits += 1
+              session.maxCombo = Math.max(session.maxCombo, session.combo)
+              session.delays.push(delay)
+              playHit(session.combo)
+            } else {
+              session.combo = 0
+              playMiss()
+            }
+            setArcadeCombo({ groupName: session.groupName, combo: session.combo })
+          }
+
           const groupName = groups[index].name
           let groupResults = pendingDelayResults.current.get(groupName)
           if (!groupResults) {
@@ -594,6 +641,27 @@ const Proxies: React.FC = () => {
       }
       await Promise.all(result)
       flushDelayResults()
+
+      // 音游结算：按存活率与中位延迟评级
+      const session = arcadeSessionRef.current
+      arcadeSessionRef.current = null
+      setArcadeCombo(null)
+      if (arcadeOn && session && session.total > 0) {
+        const survival = session.hits / session.total
+        const sorted = [...session.delays].sort((a, b) => a - b)
+        const median = sorted.length > 0 ? sorted[Math.floor(sorted.length / 2)] : 0
+        const score = survival * 0.6 + Math.max(0, 1 - median / 1000) * 0.4
+        const rating = score >= 0.85 ? 'S' : score >= 0.65 ? 'A' : score >= 0.4 ? 'B' : 'C'
+        playSettle(rating)
+        setArcadeSettle({
+          groupName: session.groupName,
+          total: session.total,
+          hits: session.hits,
+          maxCombo: session.maxCombo,
+          medianDelay: median,
+          rating
+        })
+      }
     },
     [
       allProxies,
@@ -601,7 +669,8 @@ const Proxies: React.FC = () => {
       delayTestConcurrency,
       scheduleFlushDelayResults,
       flushDelayResults,
-      setIsOpen
+      setIsOpen,
+      arcadeOn
     ]
   )
 
@@ -1166,6 +1235,37 @@ const Proxies: React.FC = () => {
           />
         </div>
       )}
+      <AnimatePresence>
+        {arcadeCombo && arcadeCombo.combo >= 2 && (
+          <motion.div
+            key="combo-hud"
+            className="pointer-events-none fixed left-1/2 top-14 z-[75] -translate-x-1/2"
+            initial={{ opacity: 0, y: -16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -16 }}
+          >
+            <motion.span
+              key={arcadeCombo.combo}
+              initial={{ scale: 1.45 }}
+              animate={{ scale: 1 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 18 }}
+              className="block text-4xl font-black italic tracking-wide"
+              style={{
+                color:
+                  arcadeCombo.combo >= 15
+                    ? '#f87171'
+                    : arcadeCombo.combo >= 8
+                      ? '#fbbf24'
+                      : '#34d399',
+                textShadow: '0 0 24px rgba(255,255,255,0.25)'
+              }}
+            >
+              COMBO ×{arcadeCombo.combo}
+            </motion.span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {arcadeSettle && <ArcadeSettle data={arcadeSettle} onClose={() => setArcadeSettle(null)} />}
       {neural && (
         <SmartNeuralOverlay
           groupName={neural.groupName}

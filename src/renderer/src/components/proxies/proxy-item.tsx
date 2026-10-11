@@ -1,6 +1,7 @@
 import { Button, Card, CardBody } from '@heroui/react'
 import { mihomoUnfixedProxy } from '@renderer/utils/ipc'
 import React, { useMemo, useState, useCallback } from 'react'
+import { motion } from 'motion/react'
 import { FaMapPin } from 'react-icons/fa6'
 import { useTranslation } from 'react-i18next'
 import { KeyedMutator } from 'swr'
@@ -63,6 +64,10 @@ const ProxyItemBase: React.FC<Props> = (props) => {
 
   const fixed = useMemo(() => group.fixed && group.fixed === proxy.name, [group.fixed, proxy.name])
 
+  // 音游化：测速结果到达时卡片闪一圈色光（绿=命中，红=超时）
+  const lastHistory = proxy.history[proxy.history.length - 1]
+  const flashColor = lastHistory && lastHistory.delay > 0 ? '#34d399' : '#f87171'
+
   return (
     <Card
       as="div"
@@ -70,7 +75,7 @@ const ProxyItemBase: React.FC<Props> = (props) => {
       isPressable
       fullWidth
       shadow="sm"
-      className={`${
+      className={`relative overflow-visible ${
         fixed
           ? 'bg-secondary/30 border-r-2 border-r-secondary border-l-2 border-l-secondary'
           : selected
@@ -79,6 +84,13 @@ const ProxyItemBase: React.FC<Props> = (props) => {
       }`}
       radius="sm"
     >
+      <motion.span
+        key={lastHistory?.time ?? 'none'}
+        className="pointer-events-none absolute inset-0 z-10 rounded-[inherit]"
+        initial={{ opacity: 0.85, boxShadow: `0 0 0 2px ${flashColor}, 0 0 14px ${flashColor}` }}
+        animate={{ opacity: 0, boxShadow: `0 0 0 2px ${flashColor}` }}
+        transition={{ duration: 0.55, ease: 'easeOut' }}
+      />
       <CardBody className="p-1">
         {proxyDisplayMode === 'full' ? (
           <div className="flex flex-col gap-1">

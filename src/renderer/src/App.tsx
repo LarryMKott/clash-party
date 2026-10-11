@@ -25,6 +25,7 @@ import 'driver.js/dist/driver.css'
 import { useTranslation } from 'react-i18next'
 import { DEFAULT_ENABLE_TRAFFIC_LOGGER } from '../../shared/appConfig'
 import MihomoIcon from './components/base/mihomo-icon'
+import AmbientLight from './components/ambient-light'
 import { getSiderCardByPath } from './utils/sider'
 import { markInitialContentPartReady } from './utils/startup'
 
@@ -141,7 +142,9 @@ const App: React.FC = () => {
     useWindowFrame = false,
     siderWidth = 250,
     lastSelectedSiderCard = 'proxy',
-    rememberSelectedSiderCard = false
+    rememberSelectedSiderCard = false,
+    ambientLight = true,
+    disableAnimations = false
   } = appConfig || {}
   useTrafficLogger(enableTrafficLogger)
   useDnsOverrideAutoDisabledNotice()
@@ -371,6 +374,7 @@ const App: React.FC = () => {
       <Suspense fallback={null}>
         {warRoomOpen && <WarRoom onClose={() => setWarRoomOpen(false)} />}
       </Suspense>
+      {ambientLight && !disableAnimations && <AmbientLight />}
     </div>
   )
 }

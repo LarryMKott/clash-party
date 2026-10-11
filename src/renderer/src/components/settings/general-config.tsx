@@ -88,6 +88,7 @@ const GeneralConfig: React.FC = () => {
     customTrayIcon = '',
     customTrayIcons = {},
     disableAnimations = false,
+    ambientLight = true,
     showFloatingWindow: showFloating = false,
     spinFloatingIcon = true,
     floatingWindowCompatMode = true,
@@ -789,6 +790,15 @@ const GeneralConfig: React.FC = () => {
             isSelected={disableAnimations}
             onValueChange={async (v) => {
               await patchAppConfig({ disableAnimations: v })
+            }}
+          />
+        </SettingItem>
+        <SettingItem title={t('settings.ambientLight')} divider>
+          <Switch
+            size="sm"
+            isSelected={ambientLight}
+            onValueChange={async (v) => {
+              await patchAppConfig({ ambientLight: v })
             }}
           />
         </SettingItem>

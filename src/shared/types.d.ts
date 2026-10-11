@@ -398,6 +398,8 @@ interface IAppConfig {
   customTrayIcons?: ICustomTrayIcons
   trayProxyGroupStyle?: 'default' | 'submenu'
   disableAnimations?: boolean
+  /** 屏幕边缘氛围灯：随实时流量变色呼吸（默认开启） */
+  ambientLight?: boolean
   webdavUrl?: string
   webdavDir?: string
   webdavUsername?: string
