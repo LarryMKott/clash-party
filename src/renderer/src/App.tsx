@@ -1,5 +1,6 @@
 import { useTheme } from 'next-themes'
 import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react'
+import { AnimatePresence } from 'motion/react'
 import { NavigateFunction, useLocation, useNavigate, useRoutes } from 'react-router-dom'
 import OutboundModeSwitcher from '@renderer/components/sider/outbound-mode-switcher'
 import { Button, Divider, Modal, ModalBody, ModalContent, ModalHeader } from '@heroui/react'
@@ -26,6 +27,7 @@ import { useTranslation } from 'react-i18next'
 import { DEFAULT_ENABLE_TRAFFIC_LOGGER } from '../../shared/appConfig'
 import MihomoIcon from './components/base/mihomo-icon'
 import AmbientLight from './components/ambient-light'
+import IgnitionOverlay, { shouldPlayIgnition } from './components/ignition-overlay'
 import { getSiderCardByPath } from './utils/sider'
 import { markInitialContentPartReady } from './utils/startup'
 
@@ -154,6 +156,7 @@ const App: React.FC = () => {
   const [resizing, setResizing] = useState(false)
   const resizingRef = useRef(resizing)
   const [warRoomOpen, setWarRoomOpen] = useState(false)
+  const [ignition, setIgnition] = useState(() => shouldPlayIgnition(disableAnimations))
   useDeferredRoutePreload()
   const { setTheme, systemTheme } = useTheme()
   const navigate: NavigateFunction = useNavigate()
@@ -375,6 +378,9 @@ const App: React.FC = () => {
         {warRoomOpen && <WarRoom onClose={() => setWarRoomOpen(false)} />}
       </Suspense>
       {ambientLight && !disableAnimations && <AmbientLight />}
+      <AnimatePresence>
+        {ignition && <IgnitionOverlay onDone={() => setIgnition(false)} />}
+      </AnimatePresence>
     </div>
   )
 }

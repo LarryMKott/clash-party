@@ -73,7 +73,7 @@ import GroupEditorModal from '@renderer/components/proxies/group-editor-modal'
 import DeleteResourceButton from '@renderer/components/simple/delete-resource-button'
 import SortableGroup from '@renderer/components/proxies/sortable-group'
 import ArcadeSettle, { type ArcadeSettleData } from '@renderer/components/proxies/arcade-settle'
-import { playHit, playMiss, playSettle } from '@renderer/utils/arcade-audio'
+import { playHit, playMiss, playSettle, playSelect } from '@renderer/utils/arcade-audio'
 import { toast } from '@renderer/components/base/toast'
 import type { SimpleObject } from '../../../shared/simple-config'
 
@@ -455,6 +455,7 @@ const Proxies: React.FC = () => {
 
   const onChangeProxy = useCallback(
     async (group: string, proxy: string): Promise<void> => {
+      playSelect()
       await mihomoChangeProxy(group, proxy)
       if (autoCloseConnection) {
         await mihomoCloseAllConnections(autoCloseConnectionOnlyGroup ? group : undefined)

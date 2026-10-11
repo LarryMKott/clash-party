@@ -9,6 +9,7 @@ import { CSS } from '@dnd-kit/utilities'
 import React from 'react'
 import { useAppConfig } from '@renderer/hooks/use-app-config'
 import { useTranslation } from 'react-i18next'
+import { playToggle } from '@renderer/utils/arcade-audio'
 
 interface Props {
   iconOnly?: boolean
@@ -101,6 +102,7 @@ const TunSwitcher: React.FC<Props> = (props) => {
     }
     window.electron.ipcRenderer.send('updateFloatingWindow')
     window.electron.ipcRenderer.send('updateTrayMenu')
+    if (!disableAnimations) playToggle(enable)
   }
 
   if (iconOnly) {

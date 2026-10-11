@@ -10,6 +10,7 @@ import React from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useTranslation } from 'react-i18next'
+import { playToggle } from '@renderer/utils/arcade-audio'
 
 interface Props {
   iconOnly?: boolean
@@ -50,6 +51,7 @@ const SysproxySwitcher: React.FC<Props> = (props) => {
 
       window.electron.ipcRenderer.send('updateFloatingWindow')
       window.electron.ipcRenderer.send('updateTrayMenu')
+      if (!disableAnimations) playToggle(enable)
     } catch (e) {
       await patchAppConfig({ sysProxy: { enable: previousState } })
       // 回滚图标

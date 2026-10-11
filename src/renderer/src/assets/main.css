@@ -278,3 +278,41 @@
     opacity: 0;
   }
 }
+
+/* ─── 日志页 CRT（黑客帝国）模式 ─────────────────────────────── */
+.crt-scanlines {
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.28) 0 1px, transparent 1px 3px);
+  mix-blend-mode: multiply;
+}
+
+.logs-crt canvas {
+  opacity: 0.5;
+}
+
+.logs-crt > div:last-child {
+  isolation: isolate;
+}
+
+/* 磷光绿等宽化：覆盖日志卡片文字观感 */
+.logs-crt .bg-content1 {
+  background: rgba(4, 18, 12, 0.72) !important;
+  border: 1px solid rgba(52, 211, 153, 0.25) !important;
+  backdrop-filter: none;
+}
+
+.logs-crt .bg-content1 *,
+.logs-crt small {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace !important;
+  color: #86efac !important;
+  text-shadow: 0 0 7px rgba(74, 222, 128, 0.45);
+}
+
+.logs-crt .text-danger {
+  color: #fca5a5 !important;
+  text-shadow: 0 0 8px rgba(248, 113, 113, 0.5);
+}
+
+.logs-crt .text-warning {
+  color: #fcd34d !important;
+  text-shadow: 0 0 8px rgba(251, 191, 36, 0.5);
+}

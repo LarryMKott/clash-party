@@ -1,15 +1,18 @@
 import BasePage from '@renderer/components/base/base-page'
 import LogItem from '@renderer/components/logs/log-item'
+import LogMatrix from '@renderer/components/logs/log-matrix'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Divider, Input, Select, SelectItem } from '@heroui/react'
 import { Virtuoso, VirtuosoHandle } from 'react-virtuoso'
 import { IoLocationSharp } from 'react-icons/io5'
 import { CgTrash } from 'react-icons/cg'
+import { TbTerminal2 } from 'react-icons/tb'
 import { useTranslation } from 'react-i18next'
 import { includesIgnoreCase } from '@renderer/utils/includes'
 
 const LOGS_FILTER_KEY = 'logs-filter'
 const LOGS_LEVEL_FILTER_KEY = 'logs-level-filter'
+const LOGS_CRT_KEY = 'logs-crt-mode'
 const MAX_CACHED_LOGS = 500
 const LOG_RENDER_INTERVAL_MS = 100
 const logLevelOrder: Record<LogLevel, number> = {
@@ -67,6 +70,7 @@ const Logs: React.FC = () => {
     return savedLevel && savedLevel in logLevelOrder ? (savedLevel as LogLevel) : 'debug'
   })
   const [trace, setTrace] = useState(true)
+  const [crtMode, setCrtMode] = useState(() => localStorage.getItem(LOGS_CRT_KEY) === '1')
 
   const virtuosoRef = useRef<VirtuosoHandle>(null)
 
@@ -153,6 +157,22 @@ const Logs: React.FC = () => {
           <Button
             size="sm"
             isIconOnly
+            className="ml-2"
+            color={crtMode ? 'success' : 'default'}
+            variant={crtMode ? 'solid' : 'bordered'}
+            title={t('logs.crt')}
+            onPress={() => {
+              setCrtMode((prev) => {
+                localStorage.setItem(LOGS_CRT_KEY, prev ? '0' : '1')
+                return !prev
+              })
+            }}
+          >
+            <TbTerminal2 className="text-lg" />
+          </Button>
+          <Button
+            size="sm"
+            isIconOnly
             title={t('logs.clear')}
             className="ml-2"
             variant="light"
@@ -166,7 +186,9 @@ const Logs: React.FC = () => {
         </div>
         <Divider />
       </div>
-      <div className="h-[calc(100vh-100px)] mt-px">
+      <div className={`relative h-[calc(100vh-100px)] mt-px ${crtMode ? 'logs-crt' : ''}`}>
+        {crtMode && <LogMatrix />}
+        {crtMode && <div className="crt-scanlines pointer-events-none absolute inset-0 z-20" />}
         <Virtuoso
           ref={virtuosoRef}
           data={filteredLogs}

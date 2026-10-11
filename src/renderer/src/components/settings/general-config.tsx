@@ -35,6 +35,7 @@ import {
   writeTheme
 } from '@renderer/utils/ipc'
 import { useAppConfig } from '@renderer/hooks/use-app-config'
+import { isArcadeSoundEnabled, setArcadeSoundEnabled } from '@renderer/utils/arcade-audio'
 import debounce from '@renderer/utils/debounce'
 import { platform } from '@renderer/utils/init'
 import { useTheme } from 'next-themes'
@@ -73,6 +74,7 @@ const GeneralConfig: React.FC = () => {
   const [pendingWindowFrameValue, setPendingWindowFrameValue] = useState(false)
   const [showHardwareAccelConfirm, setShowHardwareAccelConfirm] = useState(false)
   const [pendingHardwareAccelValue, setPendingHardwareAccelValue] = useState(false)
+  const [cyberSound, setCyberSound] = useState(isArcadeSoundEnabled)
   const { setTheme } = useTheme()
   const {
     silentStart = false,
@@ -799,6 +801,16 @@ const GeneralConfig: React.FC = () => {
             isSelected={ambientLight}
             onValueChange={async (v) => {
               await patchAppConfig({ ambientLight: v })
+            }}
+          />
+        </SettingItem>
+        <SettingItem title={t('settings.cyberSound')} divider>
+          <Switch
+            size="sm"
+            isSelected={cyberSound}
+            onValueChange={(v) => {
+              setArcadeSoundEnabled(v)
+              setCyberSound(v)
             }}
           />
         </SettingItem>

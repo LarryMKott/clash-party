@@ -1,10 +1,12 @@
-// 测速音游的合成音效：WebAudio 现场生成，无音频素材。
-// 开关存 localStorage（'arcade-sound'），结算面板里可切换。
+// 赛博事件音效 + 测速音游的合成音：WebAudio 现场生成，无音频素材。
+// 统一开关存 localStorage（'cyber-sound'，兼容旧 'arcade-sound'）。
 
-const KEY = 'arcade-sound'
+const KEY = 'cyber-sound'
+const LEGACY_KEY = 'arcade-sound'
 
 export function isArcadeSoundEnabled(): boolean {
-  return localStorage.getItem(KEY) !== '0'
+  const value = localStorage.getItem(KEY) ?? localStorage.getItem(LEGACY_KEY)
+  return value !== '0'
 }
 
 export function setArcadeSoundEnabled(enabled: boolean): void {
@@ -73,5 +75,23 @@ export function playSettle(rating: string): void {
     ;[523, 659, 784].forEach((f, i) => tone(f, 0.14, 'triangle', 0.07, i * 0.09))
   } else {
     tone(440, 0.2, 'triangle', 0.06)
+  }
+}
+
+// ─── 全局事件音 ────────────────────────────────────────────────
+
+// 切换节点：短促轻快的"滴"
+export function playSelect(): void {
+  tone(880, 0.07, 'sine', 0.05)
+}
+
+// 功能开关：开启上行双音 / 关闭下行双音
+export function playToggle(on: boolean): void {
+  if (on) {
+    tone(440, 0.08, 'triangle', 0.06)
+    tone(660, 0.1, 'triangle', 0.06, 0.07)
+  } else {
+    tone(660, 0.08, 'triangle', 0.05)
+    tone(440, 0.1, 'triangle', 0.05, 0.07)
   }
 }
