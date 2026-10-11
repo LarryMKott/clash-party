@@ -60,14 +60,17 @@ export function getProcessedVersion() {
   }
 }
 
-// 生成下载URL：fork/自建仓库时指向 GITHUB_REPOSITORY，未注入时回退上游
+// 生成下载URL：fork/自建仓库时指向 GITHUB_REPOSITORY，未注入时回退上游。
+// tag 构建用真实 tag 名（如 v2.0.3-fork.4），保证链接与发布版本一致。
 export function getDownloadUrl(isDev, version) {
   const repo = process.env.GITHUB_REPOSITORY || 'mihomo-party-org/clash-party'
   const base = `https://github.com/${repo}/releases/download`
   if (isDev) {
     return `${base}/dev`
   }
-  return `${base}/v${version}`
+  const ref = process.env.GITHUB_REF_NAME || ''
+  const tag = ref.startsWith('v') ? ref : `v${version}`
+  return `${base}/${tag}`
 }
 
 export function generateDownloadLinksMarkdown(downloadUrl, version) {
