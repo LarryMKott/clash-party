@@ -17,8 +17,39 @@ interface BucketPoint {
   isHome?: boolean
 }
 
+interface OrbitRing {
+  points: { lat: number; lng: number }[]
+  color: string
+}
+
 // 本机位置的装饰性原点（与星图保持一致）
 const HOME = { lat: 32, lng: 106 }
+
+// 装饰性卫星轨道：绕原点倾斜的等纬度圈，用虚线流动模拟在轨运动
+function buildOrbit(inclinationDeg: number, radiusDeg: number, color: string): OrbitRing {
+  const inc = (inclinationDeg * Math.PI) / 180
+  const a = (radiusDeg * Math.PI) / 180
+  const points: { lat: number; lng: number }[] = []
+  for (let i = 0; i <= 96; i++) {
+    const th = (i / 96) * Math.PI * 2
+    const x = Math.sin(a) * Math.cos(th)
+    const y = Math.sin(a) * Math.sin(th)
+    const z = Math.cos(a)
+    const y2 = y * Math.cos(inc) - z * Math.sin(inc)
+    const z2 = y * Math.sin(inc) + z * Math.cos(inc)
+    points.push({
+      lat: (Math.asin(z2) * 180) / Math.PI,
+      lng: (Math.atan2(y2, x) * 180) / Math.PI
+    })
+  }
+  return { points, color }
+}
+
+const ORBITS: OrbitRing[] = [
+  buildOrbit(26, 64, 'rgba(125,211,252,0.55)'),
+  buildOrbit(-48, 76, 'rgba(96,165,250,0.45)'),
+  buildOrbit(74, 52, 'rgba(167,139,250,0.45)')
+]
 
 function acc<T, Out>(fn: (d: T) => Out): (obj: object) => Out {
   return (obj) => fn(obj as T)
@@ -131,6 +162,17 @@ const LiveGlobeBase: React.FC<LiveGlobeProps> = ({ activeByIso }) => {
         )
         .ringPropagationSpeed(acc((d: BucketPoint) => (d.isHome ? 1 : 1.7)))
         .ringRepeatPeriod(acc((d: BucketPoint) => (d.isHome ? 1800 : 1500)))
+        .pathsData(ORBITS)
+        .pathPoints(acc((d: OrbitRing) => d.points))
+        .pathPointLat(acc((p: { lat: number }) => p.lat))
+        .pathPointLng(acc((p: { lng: number }) => p.lng))
+        .pathPointAlt(acc(() => 0.014))
+        .pathColor(acc((d: OrbitRing) => [d.color, d.color]))
+        .pathStroke(acc(() => 0.3))
+        .pathDashLength(0.28)
+        .pathDashGap(0.22)
+        .pathDashAnimateTime(9000)
+        .pathTransitionDuration(0)
 
       globe.controls().autoRotate = true
       globe.controls().autoRotateSpeed = 0.4

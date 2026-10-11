@@ -195,3 +195,86 @@
     width: 0%;
   }
 }
+
+/* ── 战争桌面 HUD 装饰动效 ── */
+
+@keyframes warroom-scan-band {
+  0% {
+    transform: translateY(-120%);
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(560%);
+    opacity: 0;
+  }
+}
+
+@keyframes warroom-tape {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes warroom-corner-breathe {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes warroom-screen-flicker {
+  0%,
+  46%,
+  100% {
+    opacity: 0.9;
+  }
+  48% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+  74% {
+    opacity: 0.55;
+  }
+  76% {
+    opacity: 0.9;
+  }
+}
+
+@keyframes warroom-caret {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes warroom-cell-wave {
+  0%,
+  60%,
+  100% {
+    opacity: 0;
+  }
+  72% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 0;
+  }
+}

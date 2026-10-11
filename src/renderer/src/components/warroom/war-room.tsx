@@ -1,5 +1,5 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { motion } from 'motion/react'
+import { AnimatePresence, motion } from 'motion/react'
 import { Button } from '@heroui/react'
 import { IoCloseOutline, IoPulse } from 'react-icons/io5'
 import { useTranslation } from 'react-i18next'
@@ -8,6 +8,9 @@ import ConnectionRadar from './connection-radar'
 import TrafficSpectrum from './traffic-spectrum'
 import SpeedOdometer from './speed-odometer'
 import LogTicker from './log-ticker'
+import NodeMatrix from './node-matrix'
+import HudOverlay from './hud-overlay'
+import BootSequence from './boot-sequence'
 
 interface Props {
   onClose: () => void
@@ -34,12 +37,59 @@ function extractDestIso(conn: IMihomoConnectionDetail): string | null {
   return null
 }
 
+function pad(n: number): string {
+  return String(n).padStart(2, '0')
+}
+
+// 顶栏状态簇：LIVE 心跳 + 系统时钟 + 战情室在线时长
+const StatusCluster: React.FC = () => {
+  const { t } = useTranslation()
+  const [now, setNow] = useState(() => Date.now())
+  const startRef = useRef(Date.now())
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(id)
+  }, [])
+
+  const date = new Date(now)
+  const clock = `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+  const elapsed = Math.max(0, Math.floor((now - startRef.current) / 1000))
+  const uptime = `${pad(Math.floor(elapsed / 3600))}:${pad(Math.floor((elapsed % 3600) / 60))}:${pad(elapsed % 60)}`
+
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/40 px-4 py-2 font-mono backdrop-blur-md">
+      <span className="flex items-center gap-2">
+        <span
+          className="h-1.5 w-1.5 rounded-full"
+          style={{
+            background: '#f87171',
+            boxShadow: '0 0 8px #f87171',
+            animation: 'warroom-caret 1.6s steps(1, end) infinite'
+          }}
+        />
+        <span className="text-[11px] tracking-[0.25em]" style={{ color: '#f87171' }}>
+          {t('warroom.live')}
+        </span>
+      </span>
+      <span className="text-[13px] tabular-nums tracking-[0.12em] text-white/85">{clock}</span>
+      <span className="flex flex-col leading-tight">
+        <span className="text-[9px] tracking-[0.25em] text-foreground/40">
+          {t('warroom.uptime')}
+        </span>
+        <span className="text-[12px] tabular-nums text-foreground/70">{uptime}</span>
+      </span>
+    </div>
+  )
+}
+
 const WarRoomBase: React.FC<Props> = ({ onClose }) => {
   const { t } = useTranslation()
   const [connections, setConnections] = useState<IMihomoConnectionDetail[]>([])
   const [speeds, setSpeeds] = useState<Map<string, number>>(new Map())
   const [traffic, setTraffic] = useState({ up: 0, down: 0 })
   const [log, setLog] = useState<IMihomoLogInfo | null>(null)
+  const [booting, setBooting] = useState(true)
   const [mounted, setMounted] = useState(false)
 
   const prevTotalsRef = useRef<Map<string, number>>(new Map())
@@ -54,10 +104,10 @@ const WarRoomBase: React.FC<Props> = ({ onClose }) => {
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  // 挂载动画
-  useEffect(() => {
-    const timer = setTimeout(() => setMounted(true), 30)
-    return () => clearTimeout(timer)
+  // 自检结束 → 收起自检层，主界面入场
+  const handleBootDone = useCallback((): void => {
+    setBooting(false)
+    setMounted(true)
   }, [])
 
   useEffect(() => {
@@ -122,14 +172,17 @@ const WarRoomBase: React.FC<Props> = ({ onClose }) => {
   return (
     <motion.div
       key="warroom"
-      className="fixed inset-0 z-[95] select-none"
+      className="fixed inset-0 z-[95] select-none overflow-hidden"
       style={STARFIELD}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
     >
-      {/* 顶栏：标题 + 翻牌速率 + 退出 */}
-      <div className="pointer-events-none absolute left-0 right-0 top-0 z-10 flex items-start justify-between p-4">
+      {/* HUD 装饰层：网格 / 刻度 / 角括号 / 扫描线 / 暗角 */}
+      <HudOverlay />
+
+      {/* 顶栏：标题 + 翻牌速率 + 状态簇 + 退出 */}
+      <div className="pointer-events-none absolute left-0 right-0 top-0 z-10 flex items-start justify-between gap-4 p-4 pl-6 pr-6">
         <motion.div
           initial={{ x: -40, opacity: 0 }}
           animate={mounted ? { x: 0, opacity: 1 } : {}}
@@ -157,24 +210,30 @@ const WarRoomBase: React.FC<Props> = ({ onClose }) => {
           <SpeedOdometer value={traffic.down} label={t('warroom.speed.down')} color="#60a5fa" />
         </motion.div>
 
-        <div className="pointer-events-auto">
+        <motion.div
+          initial={{ x: 40, opacity: 0 }}
+          animate={mounted ? { x: 0, opacity: 1 } : {}}
+          transition={{ type: 'spring', stiffness: 200, damping: 22, delay: 0.12 }}
+          className="pointer-events-auto flex items-center gap-3"
+        >
+          <StatusCluster />
           <Button
             isIconOnly
             size="sm"
             variant="flat"
             radius="full"
-            className="mt-1 bg-black/40 text-white"
+            className="bg-black/40 text-white"
             onPress={onClose}
             title={`${t('warroom.exit')} (ESC)`}
           >
             <IoCloseOutline className="text-xl" />
           </Button>
-        </div>
+        </motion.div>
       </div>
 
       {/* 主区：雷达 | 实时地球 | 频谱 */}
       <motion.div
-        className="absolute inset-x-0 bottom-[52px] top-[92px] grid grid-cols-[300px_1fr_300px] items-stretch gap-4 px-4"
+        className="absolute inset-x-0 bottom-[102px] top-[92px] grid grid-cols-[300px_1fr_300px] items-stretch gap-4 px-6"
         initial={{ opacity: 0, scale: 0.97 }}
         animate={mounted ? { opacity: 1, scale: 1 } : {}}
         transition={{ duration: 0.45, delay: 0.15 }}
@@ -196,15 +255,19 @@ const WarRoomBase: React.FC<Props> = ({ onClose }) => {
         </div>
       </motion.div>
 
-      {/* 底栏：日志 ticker */}
+      {/* 底栏：连接矩阵 + 日志 ticker */}
       <motion.div
-        className="absolute bottom-3 left-4 right-4 z-10"
+        className="absolute bottom-3 left-6 right-6 z-10 flex flex-col gap-2"
         initial={{ y: 30, opacity: 0 }}
         animate={mounted ? { y: 0, opacity: 1 } : {}}
         transition={{ type: 'spring', stiffness: 200, damping: 22, delay: 0.2 }}
       >
+        <NodeMatrix connections={connections} speeds={speeds} />
         <LogTicker log={log} />
       </motion.div>
+
+      {/* 启动自检序列 */}
+      <AnimatePresence>{booting && <BootSequence onDone={handleBootDone} />}</AnimatePresence>
     </motion.div>
   )
 }

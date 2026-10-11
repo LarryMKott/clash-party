@@ -10,8 +10,8 @@ export interface RegionInfo {
 }
 
 export const REGIONS: RegionInfo[] = [
-  { iso: 'HK', name: '香港', lat: 22.32, lng: 114.17 },
-  { iso: 'TW', name: '台湾', lat: 23.7, lng: 120.96 },
+  { iso: 'HK', name: '中国香港', lat: 22.32, lng: 114.17 },
+  { iso: 'TW', name: '中国台湾', lat: 23.7, lng: 120.96 },
   { iso: 'JP', name: '日本', lat: 36.2, lng: 138.25 },
   { iso: 'KR', name: '韩国', lat: 36.5, lng: 127.8 },
   { iso: 'SG', name: '新加坡', lat: 1.35, lng: 103.82 },
