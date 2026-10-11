@@ -27,6 +27,7 @@ import { useTranslation } from 'react-i18next'
 import { DEFAULT_ENABLE_TRAFFIC_LOGGER } from '../../shared/appConfig'
 import MihomoIcon from './components/base/mihomo-icon'
 import AmbientLight from './components/ambient-light'
+import MilestoneCelebration from './components/milestone-celebration'
 import IgnitionOverlay, { shouldPlayIgnition } from './components/ignition-overlay'
 import { getSiderCardByPath } from './utils/sider'
 import { markInitialContentPartReady } from './utils/startup'
@@ -378,6 +379,7 @@ const App: React.FC = () => {
         {warRoomOpen && <WarRoom onClose={() => setWarRoomOpen(false)} />}
       </Suspense>
       {ambientLight && !disableAnimations && <AmbientLight />}
+      {!disableAnimations && <MilestoneCelebration />}
       <AnimatePresence>
         {ignition && <IgnitionOverlay onDone={() => setIgnition(false)} />}
       </AnimatePresence>

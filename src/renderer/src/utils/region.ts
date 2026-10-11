@@ -42,6 +42,16 @@ export function getRegionByIso(iso: string): RegionInfo | undefined {
   return REGION_BY_ISO.get(iso.toUpperCase())
 }
 
+// 提取节点名中的国旗 emoji 及其 ISO 码（国旗丝带用）
+export function extractFlag(name: string): { emoji: string; iso: string } | null {
+  const match = name.match(/[\u{1F1E6}-\u{1F1FF}]{2}/u)
+  if (!match) return null
+  const points = Array.from(match[0]).map((c) => c.codePointAt(0) ?? 0)
+  if (points.length !== 2) return null
+  const iso = String.fromCharCode(points[0] - 0x1f1e6 + 65, points[1] - 0x1f1e6 + 65)
+  return { emoji: match[0], iso }
+}
+
 // 关键词按此顺序短路匹配；短代码用 \b 防止误命中（如 US 匹配到 RUSSIA）
 const REGION_KEYWORDS: [string, RegExp][] = [
   ['HK', /香港|港區?节点|Hong ?Kong|\bHK\b/i],

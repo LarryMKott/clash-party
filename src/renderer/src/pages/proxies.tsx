@@ -72,6 +72,7 @@ import {
 import GroupEditorModal from '@renderer/components/proxies/group-editor-modal'
 import DeleteResourceButton from '@renderer/components/simple/delete-resource-button'
 import SortableGroup from '@renderer/components/proxies/sortable-group'
+import FlagRibbon from '@renderer/components/proxies/flag-ribbon'
 import ArcadeSettle, { type ArcadeSettleData } from '@renderer/components/proxies/arcade-settle'
 import { playHit, playMiss, playSettle, playSelect } from '@renderer/utils/arcade-audio'
 import { toast } from '@renderer/components/base/toast'
@@ -79,6 +80,7 @@ import type { SimpleObject } from '../../../shared/simple-config'
 
 const GROUP_EXPAND_STATE_KEY = 'proxy_group_expand_state'
 const EMPTY_GROUPS: IMihomoMixedGroup[] = []
+const EMPTY_RIBBON_NAMES: string[] = []
 const restrictToVerticalAxis: Modifier = ({ transform }) => ({ ...transform, x: 0 })
 
 const GlobeModal = lazy(() => import('@renderer/components/proxies/globe-modal'))
@@ -338,6 +340,12 @@ const Proxies: React.FC = () => {
     }
     return Array.from(byName.values())
   }, [groups])
+
+  // 每组节点名列表（国旗丝带用）
+  const groupRibbonNames = useMemo(
+    () => groups.map((group) => group.all.map((proxy) => proxy.name)),
+    [groups]
+  )
 
   // ─── 花活：测速音游化 ──────────────────────────────────────────────────────
   const arcadeOn = !appConfig?.disableAnimations
@@ -753,14 +761,21 @@ const Proxies: React.FC = () => {
                         {groups[index].name}
                       </span>
                     </div>
-                    <div className="text-ellipsis overflow-hidden whitespace-nowrap text-[10px] text-foreground-500 leading-tight flex-3 flex items-center">
-                      <span>{groups[index].type}</span>
-                      <span
-                        title={groups[index].now}
-                        className="flag-emoji ml-1 inline-block truncate"
-                      >
-                        {groups[index].now}
-                      </span>
+                    <div className="flex items-center justify-between gap-2 text-[10px] text-foreground-500 leading-tight flex-3 min-w-0">
+                      <div className="flex items-center gap-1 overflow-hidden whitespace-nowrap">
+                        <span>{groups[index].type}</span>
+                        <span
+                          title={groups[index].now}
+                          className="flag-emoji inline-block truncate"
+                        >
+                          {groups[index].now}
+                        </span>
+                      </div>
+                      {!editing && (
+                        <div className="shrink-0 overflow-hidden">
+                          <FlagRibbon names={groupRibbonNames[index] ?? EMPTY_RIBBON_NAMES} />
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

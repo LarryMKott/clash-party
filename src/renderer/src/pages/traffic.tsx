@@ -2,6 +2,7 @@ import BasePage from '@renderer/components/base/base-page'
 import TrafficRankings from '@renderer/components/traffic/traffic-rankings'
 import TrafficTrendChart from '@renderer/components/traffic/traffic-trend-chart'
 import TrafficDetailsTable from '@renderer/components/traffic/traffic-details-table'
+import { lazy, Suspense } from 'react'
 import {
   getTrafficOverview,
   getSubStatsByHost,
@@ -16,6 +17,9 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { calcTraffic } from '@renderer/utils/calc'
 import { CgTrash } from 'react-icons/cg'
+import { IoCubeOutline, IoPulseOutline } from 'react-icons/io5'
+
+const TrafficSkyline = lazy(() => import('@renderer/components/traffic/traffic-skyline'))
 
 type TimeRange = '1h' | '24h' | '7d' | '30d'
 
@@ -57,6 +61,14 @@ const TrafficPage: React.FC = () => {
   const [detailLoading, setDetailLoading] = useState(false)
   const [expandingKey, setExpandingKey] = useState<string | null>(null)
   const detailLoadIdRef = useRef(0)
+  const [skylineOn, setSkylineOn] = useState(() => localStorage.getItem('traffic-skyline') === '1')
+
+  const toggleSkyline = (): void => {
+    setSkylineOn((prev) => {
+      localStorage.setItem('traffic-skyline', prev ? '0' : '1')
+      return !prev
+    })
+  }
 
   const load = useCallback(
     async (
@@ -273,8 +285,29 @@ const TrafficPage: React.FC = () => {
               onSelect={handleSelectRow}
             />
           </div>
-          <div className="col-span-3 h-52 overflow-hidden rounded-xl border border-foreground/10 bg-content1 p-3 shadow-sm">
-            <TrafficTrendChart data={trendData} bucketSizeMs={bucketSizeMs} />
+          <div className="relative col-span-3 h-52 overflow-hidden rounded-xl border border-foreground/10 bg-content1 p-3 shadow-sm">
+            {skylineOn ? (
+              <Suspense fallback={null}>
+                <TrafficSkyline data={trendData} bucketSizeMs={bucketSizeMs} />
+              </Suspense>
+            ) : (
+              <TrafficTrendChart data={trendData} bucketSizeMs={bucketSizeMs} />
+            )}
+            <Button
+              isIconOnly
+              size="sm"
+              variant="light"
+              className="absolute right-2 top-2 z-10"
+              color={skylineOn ? 'primary' : 'default'}
+              onPress={toggleSkyline}
+              title={t('traffic.skyline')}
+            >
+              {skylineOn ? (
+                <IoPulseOutline className="text-lg" />
+              ) : (
+                <IoCubeOutline className="text-lg" />
+              )}
+            </Button>
           </div>
         </div>
 
