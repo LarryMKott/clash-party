@@ -734,8 +734,8 @@ jobs:
       - name: Update Checksums
         if: matrix.pkgname == 'mihomo-party-bin' || matrix.pkgname == 'mihomo-party-electron-bin'
         run: |
-          wget https://github.com/${{ github.repository }}/releases/download/$(echo ${{ github.ref }} | tr -d 'refs/tags/')/clash-party-linux-$(echo ${{ github.ref }} | tr -d 'refs/tags/v')-amd64.deb -O amd64.deb
-          wget https://github.com/${{ github.repository }}/releases/download/$(echo ${{ github.ref }} | tr -d 'refs/tags/')/clash-party-linux-$(echo ${{ github.ref }} | tr -d 'refs/tags/v')-arm64.deb -O arm64.deb
+          wget https://github.com/${{ github.repository }}/releases/download/$(echo ${{ github.ref }} | tr -d 'refs/tags/')/clash-party-fireworks-linux-$(echo ${{ github.ref }} | tr -d 'refs/tags/v')-amd64.deb -O amd64.deb
+          wget https://github.com/${{ github.repository }}/releases/download/$(echo ${{ github.ref }} | tr -d 'refs/tags/')/clash-party-fireworks-linux-$(echo ${{ github.ref }} | tr -d 'refs/tags/v')-arm64.deb -O arm64.deb
           sed -i "s/sha256sums_x86_64=.*/sha256sums_x86_64=(\"$(sha256sum ./amd64.deb | awk '{print $1}')\")/" aur/mihomo-party-bin/PKGBUILD
           sed -i "s/sha256sums_aarch64=.*/sha256sums_aarch64=(\"$(sha256sum ./arm64.deb | awk '{print $1}')\")/" aur/mihomo-party-bin/PKGBUILD
           sed -i "s/sha256sums_x86_64=.*/sha256sums_x86_64=(\"$(sha256sum ./amd64.deb | awk '{print $1}')\")/" aur/mihomo-party-electron-bin/PKGBUILD
@@ -789,5 +789,5 @@ jobs:
           identifier: Mihomo-Party.Mihomo-Party
           version: ${{env.VERSION}}
           release-tag: v${{env.VERSION}}
-          installers-regex: 'clash-party-windows-.*setup\.exe$'
+          installers-regex: 'clash-party-.*windows-.*setup\.exe$'
           token: ${{ secrets.POMPURIN404_TOKEN }}

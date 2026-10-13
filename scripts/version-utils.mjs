@@ -73,21 +73,23 @@ export function getDownloadUrl(isDev, version) {
   return `${base}/${tag}`
 }
 
+// 下载链接的文件名与 electron-builder artifactName 保持一致（含花火版标识）
 export function generateDownloadLinksMarkdown(downloadUrl, version) {
+  const fw = 'clash-party-fireworks'
   let links = '\n### 下载地址：\n\n#### Windows10/11：\n\n'
-  links += `- 安装版：[64位](${downloadUrl}/clash-party-windows-${version}-x64-setup.exe) | [32位](${downloadUrl}/clash-party-windows-${version}-ia32-setup.exe) | [ARM64](${downloadUrl}/clash-party-windows-${version}-arm64-setup.exe)\n\n`
-  links += `- 便携版：[64位](${downloadUrl}/clash-party-windows-${version}-x64-portable.7z) | [32位](${downloadUrl}/clash-party-windows-${version}-ia32-portable.7z) | [ARM64](${downloadUrl}/clash-party-windows-${version}-arm64-portable.7z)\n\n`
+  links += `- 安装版：[64位](${downloadUrl}/${fw}-windows-${version}-x64-setup.exe) | [32位](${downloadUrl}/${fw}-windows-${version}-ia32-setup.exe) | [ARM64](${downloadUrl}/${fw}-windows-${version}-arm64-setup.exe)\n\n`
+  links += `- 便携版：[64位](${downloadUrl}/${fw}-windows-${version}-x64-portable.7z) | [32位](${downloadUrl}/${fw}-windows-${version}-ia32-portable.7z) | [ARM64](${downloadUrl}/${fw}-windows-${version}-arm64-portable.7z)\n\n`
   links += '\n#### Windows7/8：\n\n'
-  links += `- 安装版：[64位](${downloadUrl}/clash-party-win7-${version}-x64-setup.exe) | [32位](${downloadUrl}/clash-party-win7-${version}-ia32-setup.exe)\n\n`
-  links += `- 便携版：[64位](${downloadUrl}/clash-party-win7-${version}-x64-portable.7z) | [32位](${downloadUrl}/clash-party-win7-${version}-ia32-portable.7z)\n\n`
+  links += `- 安装版：[64位](${downloadUrl}/${fw}-win7-${version}-x64-setup.exe) | [32位](${downloadUrl}/${fw}-win7-${version}-ia32-setup.exe)\n\n`
+  links += `- 便携版：[64位](${downloadUrl}/${fw}-win7-${version}-x64-portable.7z) | [32位](${downloadUrl}/${fw}-win7-${version}-ia32-portable.7z)\n\n`
   links += '\n#### macOS 11+：\n\n'
-  links += `- PKG：[Intel](${downloadUrl}/clash-party-macos-${version}-x64.pkg) | [Apple Silicon](${downloadUrl}/clash-party-macos-${version}-arm64.pkg)\n\n`
+  links += `- PKG：[Intel](${downloadUrl}/${fw}-macos-${version}-x64.pkg) | [Apple Silicon](${downloadUrl}/${fw}-macos-${version}-arm64.pkg)\n\n`
   links += '\n#### macOS 10.15+：\n\n'
-  links += `- PKG：[Intel](${downloadUrl}/clash-party-catalina-${version}-x64.pkg) | [Apple Silicon](${downloadUrl}/clash-party-catalina-${version}-arm64.pkg)\n\n`
+  links += `- PKG：[Intel](${downloadUrl}/${fw}-catalina-${version}-x64.pkg) | [Apple Silicon](${downloadUrl}/${fw}-catalina-${version}-arm64.pkg)\n\n`
   links += '\n#### Linux：\n\n'
-  links += `- DEB：[64位](${downloadUrl}/clash-party-linux-${version}-amd64.deb) | [ARM64](${downloadUrl}/clash-party-linux-${version}-arm64.deb)\n\n`
-  links += `- RPM：[64位](${downloadUrl}/clash-party-linux-${version}-x86_64.rpm) | [ARM64](${downloadUrl}/clash-party-linux-${version}-aarch64.rpm)\n\n`
-  links += `- PACMAN：[64位](${downloadUrl}/clash-party-linux-${version}-x64.pkg.tar.zst) | [ARM64](${downloadUrl}/clash-party-linux-${version}-aarch64.pkg.tar.zst)`
+  links += `- DEB：[64位](${downloadUrl}/${fw}-linux-${version}-amd64.deb) | [ARM64](${downloadUrl}/${fw}-linux-${version}-arm64.deb)\n\n`
+  links += `- RPM：[64位](${downloadUrl}/${fw}-linux-${version}-x86_64.rpm) | [ARM64](${downloadUrl}/${fw}-linux-${version}-aarch64.rpm)\n\n`
+  links += `- PACMAN：[64位](${downloadUrl}/${fw}-linux-${version}-x64.pkg.tar.zst) | [ARM64](${downloadUrl}/${fw}-linux-${version}-aarch64.pkg.tar.zst)`
 
   return links
 }
