@@ -304,6 +304,24 @@
   }
 }
 
+/* ─── Konami 彩虹模式（↑↑↓↓←→←→BA） ────────────────────────── */
+@keyframes rainbow-hue {
+  from {
+    filter: hue-rotate(0deg);
+  }
+  to {
+    filter: hue-rotate(360deg);
+  }
+}
+
+.app-rainbow-target {
+  transform-origin: center;
+}
+
+.rainbow-mode .app-rainbow-target {
+  animation: rainbow-hue 8s linear infinite;
+}
+
 /* ─── 日志页 CRT（黑客帝国）模式 ─────────────────────────────── */
 .crt-scanlines {
   background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.28) 0 1px, transparent 1px 3px);

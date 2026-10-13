@@ -28,6 +28,7 @@ import { DEFAULT_ENABLE_TRAFFIC_LOGGER } from '../../shared/appConfig'
 import MihomoIcon from './components/base/mihomo-icon'
 import AmbientLight from './components/ambient-light'
 import MilestoneCelebration from './components/milestone-celebration'
+import { fireConfetti } from './utils/confetti'
 import IgnitionOverlay, { shouldPlayIgnition } from './components/ignition-overlay'
 import { getSiderCardByPath } from './utils/sider'
 import { markInitialContentPartReady } from './utils/startup'
@@ -173,6 +174,39 @@ const App: React.FC = () => {
     return unsubscribe
   }, [navigate])
 
+  // Konami 彩蛋（↑↑↓↓←→←→BA）：切换全局彩虹模式
+  useEffect(() => {
+    if (localStorage.getItem('rainbow-mode') === '1') {
+      document.documentElement.classList.add('rainbow-mode')
+    }
+    const seq = [
+      'arrowup',
+      'arrowup',
+      'arrowdown',
+      'arrowdown',
+      'arrowleft',
+      'arrowright',
+      'arrowleft',
+      'arrowright',
+      'b',
+      'a'
+    ]
+    let idx = 0
+    const onKey = (e: KeyboardEvent): void => {
+      const k = e.key.toLowerCase()
+      idx = k === seq[idx] ? idx + 1 : k === seq[0] ? 1 : 0
+      if (idx === seq.length) {
+        idx = 0
+        const on = document.documentElement.classList.toggle('rainbow-mode')
+        localStorage.setItem('rainbow-mode', on ? '1' : '0')
+        if (on) fireConfetti(0.5, 0.3, 120)
+        toast.success(t(on ? 'easter.rainbowOn' : 'easter.rainbowOff'))
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [t])
+
   const setTitlebar = useCallback((): void => {
     if (!useWindowFrame && platform !== 'darwin') {
       const options = { height: 47 } as TitleBarOverlayOptions
@@ -263,7 +297,7 @@ const App: React.FC = () => {
           setSiderWidthValue(e.clientX)
         }
       }}
-      className={`w-full h-screen flex ${resizing ? 'cursor-ew-resize' : ''}`}
+      className={`app-rainbow-target w-full h-screen flex ${resizing ? 'cursor-ew-resize' : ''}`}
     >
       {siderWidthValue === narrowWidth ? (
         <div style={{ width: `${narrowWidth}px` }} className="side h-full flex flex-col">

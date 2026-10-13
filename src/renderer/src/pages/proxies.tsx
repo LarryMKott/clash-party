@@ -41,7 +41,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { GroupedVirtuoso, GroupedVirtuosoHandle } from 'react-virtuoso'
 import ProxyItem from '@renderer/components/proxies/proxy-item'
 import { IoIosArrowBack } from 'react-icons/io'
-import { IoEarthOutline, IoHardwareChip } from 'react-icons/io5'
+import { IoEarthOutline, IoHardwareChip, IoTrophyOutline } from 'react-icons/io5'
 import SmartNeuralOverlay, {
   isNeuralAutoPlayEnabled
 } from '@renderer/components/proxies/smart-neural-overlay'
@@ -73,6 +73,7 @@ import GroupEditorModal from '@renderer/components/proxies/group-editor-modal'
 import DeleteResourceButton from '@renderer/components/simple/delete-resource-button'
 import SortableGroup from '@renderer/components/proxies/sortable-group'
 import FlagRibbon from '@renderer/components/proxies/flag-ribbon'
+import DelayRace from '@renderer/components/proxies/delay-race'
 import ArcadeSettle, { type ArcadeSettleData } from '@renderer/components/proxies/arcade-settle'
 import { playHit, playMiss, playSettle, playSelect } from '@renderer/utils/arcade-audio'
 import { toast } from '@renderer/components/base/toast'
@@ -295,6 +296,20 @@ const Proxies: React.FC = () => {
     nodes: { name: string; delay: number }[]
     winner: string
   }>()
+  const [race, setRace] = useState<{
+    groupName: string
+    nodes: { name: string; delay: number }[]
+  }>()
+
+  const openRace = useCallback((group: IMihomoMixedGroup): void => {
+    const nodes = group.all
+      .filter((p) => !('all' in p))
+      .map((p) => ({
+        name: p.name,
+        delay: p.history.length > 0 ? p.history[p.history.length - 1].delay : 0
+      }))
+    setRace({ groupName: group.name, nodes })
+  }, [])
 
   const openNeural = useCallback(
     (group: IMihomoMixedGroup): void => {
@@ -883,6 +898,15 @@ const Proxies: React.FC = () => {
                           </Button>
                         )}
                         <Button
+                          title={t('proxies.race.title')}
+                          variant="light"
+                          size="sm"
+                          isIconOnly
+                          onPress={() => openRace(groups[index])}
+                        >
+                          <IoTrophyOutline className="text-lg text-foreground-500" />
+                        </Button>
+                        <Button
                           title={t('proxies.delay.test')}
                           variant="light"
                           isLoading={(delaying[index]?.size ?? 0) > 0}
@@ -930,7 +954,8 @@ const Proxies: React.FC = () => {
       configuredGroups,
       mutateSimple,
       savingOrder,
-      openNeural
+      openNeural,
+      openRace
     ]
   )
 
@@ -1288,6 +1313,13 @@ const Proxies: React.FC = () => {
           nodes={neural.nodes}
           winner={neural.winner}
           onClose={() => setNeural(undefined)}
+        />
+      )}
+      {race && (
+        <DelayRace
+          groupName={race.groupName}
+          nodes={race.nodes}
+          onClose={() => setRace(undefined)}
         />
       )}
       <Suspense fallback={null}>

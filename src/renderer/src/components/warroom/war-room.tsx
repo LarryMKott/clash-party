@@ -15,6 +15,7 @@ import PanelShell from './panel-shell'
 import RegionTops from './region-tops'
 import AmbientParticles from './ambient-particles'
 import AuroraGlow from './aurora-glow'
+import RateSparkline from './rate-sparkline'
 
 interface Props {
   onClose: () => void
@@ -248,6 +249,13 @@ const WarRoomBase: React.FC<Props> = ({ onClose }) => {
             label={t('warroom.speed.down')}
             color="#60a5fa"
           />
+          <div className="h-10 w-px bg-white/15" />
+          <div className="flex flex-col items-center gap-1">
+            <RateSparkline up={traffic.up} down={traffic.down} />
+            <span className="font-mono text-[10px] tracking-wider text-foreground/35">
+              60s WAVE
+            </span>
+          </div>
         </motion.div>
 
         <motion.div
