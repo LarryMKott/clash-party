@@ -26,6 +26,7 @@ import ConnectionExplain from './connection-explain'
 interface Props {
   connection: IMihomoConnectionDetail
   onClose: () => void
+  onCreateRule?: (connection: IMihomoConnectionDetail) => void
 }
 
 const CopyableSettingItem: React.FC<{
@@ -193,7 +194,7 @@ const CopyableSettingItem: React.FC<{
 }
 
 const ConnectionDetailModal: React.FC<Props> = (props) => {
-  const { connection, onClose } = props
+  const { connection, onClose, onCreateRule } = props
   const { t } = useTranslation()
 
   return (
@@ -384,6 +385,17 @@ const ConnectionDetailModal: React.FC<Props> = (props) => {
           )}
         </ModalBody>
         <ModalFooter>
+          {onCreateRule && (
+            <Button
+              size="sm"
+              color="primary"
+              variant="flat"
+              className="mr-auto"
+              onPress={() => onCreateRule(connection)}
+            >
+              {t('connections.route.action')}
+            </Button>
+          )}
           <Button size="sm" variant="light" onPress={onClose}>
             {t('connections.detail.close')}
           </Button>

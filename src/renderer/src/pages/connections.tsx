@@ -25,6 +25,7 @@ import ConnectionTable, {
 import { Virtuoso } from 'react-virtuoso'
 import dayjs from '@renderer/utils/dayjs'
 import ConnectionDetailModal from '@renderer/components/connections/connection-detail-modal'
+import ConnectionRouteModal from '@renderer/components/connections/connection-route-modal'
 import { CgClose, CgTrash } from 'react-icons/cg'
 import { useAppConfig } from '@renderer/hooks/use-app-config'
 import { HiSortAscending, HiSortDescending } from 'react-icons/hi'
@@ -67,6 +68,7 @@ const Connections: React.FC = () => {
   )
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [selected, setSelected] = useState<IMihomoConnectionDetail>()
+  const [routeTarget, setRouteTarget] = useState<IMihomoConnectionDetail>()
   const [tab, setTab] = useState('active')
   const [isPaused, setIsPaused] = useState(false)
   const [viewMode, setViewMode] = useState<'list' | 'table'>(connectionViewMode)
@@ -373,7 +375,14 @@ const Connections: React.FC = () => {
         <ConnectionDetailModal
           onClose={() => setIsDetailModalOpen(false)}
           connection={selectedConnection}
+          onCreateRule={(connection) => {
+            setIsDetailModalOpen(false)
+            setRouteTarget(connection)
+          }}
         />
+      )}
+      {routeTarget && (
+        <ConnectionRouteModal connection={routeTarget} onClose={() => setRouteTarget(undefined)} />
       )}
       <div className="overflow-x-auto sticky top-0 z-40">
         <div className="flex p-2 gap-2">

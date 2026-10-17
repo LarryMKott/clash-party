@@ -6,6 +6,10 @@
  * 不额外请求内核，因此可以随连接列表实时刷新。
  */
 
+import { isIpLiteral } from '../../../shared/connection-rule'
+
+export { isIpLiteral }
+
 export type ConnectionExplainVerdict = 'proxied' | 'direct' | 'rejected' | 'unknown'
 
 export type ConnectionExplainSeverity = 'ok' | 'info' | 'warning' | 'critical'
@@ -52,13 +56,6 @@ const IPV4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/
 const PRIVATE_IPV4_PREFIXES = ['0.', '10.', '127.', '169.254.', '192.168.']
 
 /** 判断字符串是否是 IP 字面量（而不是域名）。 */
-export function isIpLiteral(value: string): boolean {
-  if (!value) return false
-  if (value.includes(':')) return true
-  const matched = IPV4.exec(value)
-  return !!matched && matched.slice(1).every((part) => Number(part) <= 255)
-}
-
 /** 判断是否落在 mihomo 默认 fake-ip 段（198.18.0.0/15）。 */
 export function isFakeIp(value: string): boolean {
   const matched = IPV4.exec(value)
