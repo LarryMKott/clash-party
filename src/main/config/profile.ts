@@ -220,7 +220,59 @@ export async function updateProfileItem(
   }
 }
 
+const MAX_UPDATE_ERROR_LENGTH = 300
+
+/**
+ * 把更新异常压成一行可读原因：机场返回的报错经常是多行 HTML/堆栈，
+ * 直接塞进配置里既占地方也没法展示。
+ */
+export function describeUpdateError(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error)
+  const firstLine = raw
+    .split('\n')
+    .map((line) => line.trim())
+    .find((line) => line.length > 0)
+  return (firstLine ?? raw).slice(0, MAX_UPDATE_ERROR_LENGTH) || 'Unknown error'
+}
+
+/**
+ * 记录订阅更新失败。后台定时更新失败时没人接异常，只写日志等于用户永远不知道
+ * 订阅已经挂了，所以这里落盘 + 主动通知渲染层。
+ */
+async function recordProfileUpdateFailure(id: string, name: string, error: unknown): Promise<void> {
+  const message = describeUpdateError(error)
+  try {
+    await updateProfileConfig((config) => {
+      const found = config.items.find((item) => item.id === id)
+      if (found) {
+        found.lastUpdateError = message
+        found.lastUpdateErrorAt = Date.now()
+      }
+      return config
+    })
+    // 动态 import 避免与 window.ts 形成静态循环依赖
+    const { mainWindow } = await import('../window')
+    mainWindow?.webContents.send('profileUpdateFailed', { id, name, message })
+    mainWindow?.webContents.send('profileConfigUpdated')
+  } catch (notifyError) {
+    await profileLogger.warn(`Failed to record update failure for profile ${id}`, notifyError)
+  }
+}
+
 export async function addProfileItem(
+  item: Partial<IProfileItem>,
+  simpleOptions?: SimpleSubscriptionOptions
+): Promise<void> {
+  try {
+    await addProfileItemInner(item, simpleOptions)
+  } catch (error) {
+    // 新建订阅时还没有 id，只有「更新已有订阅」才需要留痕
+    if (item.id) await recordProfileUpdateFailure(item.id, item.name || item.id, error)
+    throw error
+  }
+}
+
+async function addProfileItemInner(
   item: Partial<IProfileItem>,
   simpleOptions?: SimpleSubscriptionOptions
 ): Promise<void> {

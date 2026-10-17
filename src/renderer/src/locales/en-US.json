@@ -651,6 +651,8 @@
   "profiles.title": "Profile Management",
   "profiles.input.placeholder": "Enter your subscription URL",
   "profiles.updateAll": "Update All Profiles",
+  "profiles.update.failedAt": "Last update failed ({{time}})",
+  "profiles.update.failedToast": "Failed to update {{name}}: {{message}}",
   "profiles.useProxy": "Proxy",
   "profiles.import": "Import",
   "profiles.open": "Open",

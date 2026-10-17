@@ -5,7 +5,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { addProfileUpdater } from '../core/profileUpdater'
 import { getOverrideConfig, updateOverrideConfig } from './override'
 import {
+  addProfileItem,
   createProfile,
+  describeUpdateError,
   getProfileConfig,
   getProfileItem,
   removeProfileItem,
@@ -102,6 +104,7 @@ vi.mock('../core/profileUpdater', () => ({
   addProfileUpdater: vi.fn(),
   removeProfileUpdater: vi.fn()
 }))
+vi.mock('../window', () => ({ mainWindow: undefined }))
 vi.mock('./app', () => ({
   getAppConfig: () =>
     Promise.resolve({
@@ -613,5 +616,49 @@ describe('plugin subscription validation follow-ups (V7 regressions)', () => {
       interval: 30,
       autoUpdate: false
     })
+  })
+})
+
+describe('remote profile update failure reporting', () => {
+  it('records why an update failed and keeps the last known good file', async () => {
+    mocks.checkProfileConfig.mockRejectedValueOnce(
+      new Error("proxy 'missing-group' not found\n  at generateProfile")
+    )
+
+    await expect(
+      addProfileItem({ id: 'remote', type: 'remote', name: 'Remote', url: 'https://example.test' })
+    ).rejects.toThrow("proxy 'missing-group' not found")
+
+    const failed = await getProfileItem('remote')
+    // 只保留第一行，别把整段堆栈塞进配置
+    expect(failed?.lastUpdateError).toBe("proxy 'missing-group' not found")
+    expect(failed?.lastUpdateErrorAt).toBeGreaterThan(0)
+    expect(readFileSync(join(testDir, 'profiles', 'remote.yaml'), 'utf8')).toBe(oldProfile)
+  })
+
+  it('clears the recorded failure after the next successful update', async () => {
+    mocks.checkProfileConfig.mockRejectedValueOnce(new Error('boom'))
+    await expect(
+      addProfileItem({ id: 'remote', type: 'remote', name: 'Remote', url: 'https://example.test' })
+    ).rejects.toThrow('boom')
+    expect((await getProfileItem('remote'))?.lastUpdateError).toBe('boom')
+
+    await addProfileItem({
+      id: 'remote',
+      type: 'remote',
+      name: 'Remote',
+      url: 'https://example.test'
+    })
+
+    const recovered = await getProfileItem('remote')
+    expect(recovered?.lastUpdateError).toBeUndefined()
+    expect(recovered?.lastUpdateErrorAt).toBeUndefined()
+    expect(readFileSync(join(testDir, 'profiles', 'remote.yaml'), 'utf8')).toBe(newProfile)
+  })
+
+  it('describeUpdateError 压成一行并兜底空消息', () => {
+    expect(describeUpdateError(new Error('a\nb'))).toBe('a')
+    expect(describeUpdateError('  \n done  ')).toBe('done')
+    expect(describeUpdateError('')).toBe('Unknown error')
   })
 })

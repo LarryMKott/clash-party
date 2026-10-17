@@ -619,6 +619,10 @@ interface IProfileItem {
   ageSecretKey?: string
   updateTimeout?: number
   pluginId?: string
+  /** 最近一次订阅更新失败的原因，更新成功后会被清空 */
+  lastUpdateError?: string
+  /** 最近一次订阅更新失败的时间戳 */
+  lastUpdateErrorAt?: number
 }
 
 interface ISubStoreSub {

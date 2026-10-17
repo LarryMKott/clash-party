@@ -8,7 +8,10 @@ import type { ReactNode } from 'react'
 /* eslint-disable react/prop-types */
 
 interface Props {
-  info: Pick<IProfileItem, 'name' | 'type' | 'updated' | 'extra'>
+  info: Pick<
+    IProfileItem,
+    'name' | 'type' | 'updated' | 'extra' | 'lastUpdateError' | 'lastUpdateErrorAt'
+  >
   isCurrent?: boolean
   actions: ReactNode
 }
@@ -103,6 +106,23 @@ const ProfileCardContent: React.FC<Props> = (props) => {
             }}
             value={calcPercent(extra?.upload, extra?.download, extra?.total)}
           />
+        )}
+        {info.lastUpdateError && (
+          <small
+            className={
+              isCurrent
+                ? 'mt-1 w-full truncate text-primary-foreground/80'
+                : 'mt-1 w-full truncate text-danger'
+            }
+            title={info.lastUpdateError}
+          >
+            {t('profiles.update.failedAt', {
+              time: info.lastUpdateErrorAt
+                ? dayjs(info.lastUpdateErrorAt).format('MM-DD HH:mm')
+                : ''
+            })}
+            ：{info.lastUpdateError}
+          </small>
         )}
       </CardFooter>
     </>

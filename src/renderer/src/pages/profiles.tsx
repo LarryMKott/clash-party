@@ -285,6 +285,20 @@ const Profiles: React.FC = () => {
     setSortedItems(items)
   }, [items])
 
+  // 后台定时更新失败不会经过 UI 的 try/catch，只能靠主进程推事件提醒
+  useEffect(() => {
+    const handler = (_event: unknown, payload: unknown): void => {
+      const { name, message } = (payload ?? {}) as { name?: string; message?: string }
+      toast.error(
+        tRef.current('profiles.update.failedToast', {
+          name: name ?? '',
+          message: message ?? ''
+        })
+      )
+    }
+    return window.electron.ipcRenderer.on('profileUpdateFailed', handler)
+  }, [])
+
   return (
     <BasePage
       ref={pageRef}

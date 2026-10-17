@@ -651,6 +651,8 @@
   "profiles.title": "訂閱管理",
   "profiles.input.placeholder": "請輸入您的訂閱網址",
   "profiles.updateAll": "更新全部訂閱",
+  "profiles.update.failedAt": "上次更新失敗（{{time}}）",
+  "profiles.update.failedToast": "「{{name}}」更新失敗：{{message}}",
   "profiles.useProxy": "代理",
   "profiles.import": "匯入",
   "profiles.open": "打開",

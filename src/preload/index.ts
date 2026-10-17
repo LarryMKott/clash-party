@@ -204,6 +204,7 @@ const validListenChannels = [
   'appConfigUpdated',
   'controledMihomoConfigUpdated',
   'profileConfigUpdated',
+  'profileUpdateFailed',
   'groupsUpdated',
   'rulesUpdated',
   'simpleConfigUpdated',
