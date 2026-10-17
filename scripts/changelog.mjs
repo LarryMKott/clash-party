@@ -36,6 +36,8 @@ const TYPE_TO_SECTION = {
 const CONVENTIONAL_PATTERN = /^([A-Za-z]+)(?:\(([^)]*)\))?(!)?:\s+(.+)$/
 const BREAKING_BODY_PATTERN = /(?:^|\n)BREAKING[ -]CHANGE:/
 const SKIP_MARKER_PATTERN = /\[(?:skip[ -]?changelog|no[ -]?changelog)\]/i
+// 正文里只在独立成行的地方认这个标记，否则「说明该标记」的提交也会被连带跳过
+const SKIP_MARKER_LINE_PATTERN = /^[ \t]*\[(?:skip[ -]?changelog|no[ -]?changelog)\][ \t]*$/im
 const SKIP_SUBJECT_PATTERNS = [
   /^chore(?:\(release\))?:\s*(?:release|bump|version|publish|tag)/i,
   /^v?\d+\.\d+\.\d+(?:[-+][\w.-]+)?$/
@@ -77,7 +79,7 @@ export function parseCommit(subject, body = '') {
 
 export function shouldSkipCommit({ subject = '', body = '' } = {}) {
   const trimmed = subject.trim()
-  if (SKIP_MARKER_PATTERN.test(trimmed) || SKIP_MARKER_PATTERN.test(body || '')) {
+  if (SKIP_MARKER_PATTERN.test(trimmed) || SKIP_MARKER_LINE_PATTERN.test(body || '')) {
     return true
   }
   return SKIP_SUBJECT_PATTERNS.some((pattern) => pattern.test(trimmed))

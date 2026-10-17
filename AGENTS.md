@@ -21,6 +21,7 @@
 - Commit subjects drive the grouping: `feat` → 新功能, `fix` → 修复, `perf` → 性能优化,
   `refactor` → 重构, other types → 其他, `type!:` or `BREAKING CHANGE:` → 破坏性变更.
 - Write a scoped, descriptive subject (`feat(ui): add war room hud`); it is shown to users verbatim.
-- Add `[skip changelog]` to a commit message to keep it out of the notes.
+- Add `[skip changelog]` to the commit subject, or on its own line in the body, to keep it out of
+  the notes; merely mentioning the marker in prose does not skip a commit.
 - `CHANGELOG_SOURCE=file` falls back to the hand-written `changelog.md` (e.g. for a curated release).
 - Preview locally with `pnpm changelog` (`--from/--to/--version/--write` are supported).

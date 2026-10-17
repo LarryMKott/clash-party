@@ -43,6 +43,18 @@ describe('shouldSkipCommit', () => {
 
   it('跳过显式标记的提交', () => {
     expect(shouldSkipCommit(commit('feat: internal tweak [skip changelog]'))).toBe(true)
+    expect(shouldSkipCommit(commit('feat: internal tweak', '[skip changelog]'))).toBe(true)
+    expect(
+      shouldSkipCommit(commit('feat: internal tweak', 'Some text\n\n[skip changelog]\n'))
+    ).toBe(true)
+  })
+
+  it('正文里仅仅提到该标记不算跳过', () => {
+    expect(
+      shouldSkipCommit(
+        commit('docs: explain the skip marker', 'Add `[skip changelog]` to a commit.')
+      )
+    ).toBe(false)
   })
 
   it('保留普通提交', () => {
