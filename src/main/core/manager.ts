@@ -50,6 +50,11 @@ import { generateProfile, getRuntimeConfig } from './factory'
 import { syncControlDnsAfterApply, type DnsOverrideGuardResult } from './dnsOverrideGuard'
 import { syncSmartModelToTestDir } from './smartModel'
 import {
+  isCoreApiReadyLine,
+  waitForInitialProvider,
+  type InitialProviderSignal
+} from './startupSignals'
+import {
   checkAdminRestartForTun as checkAdminRestartForTunWithRestart,
   getSessionAdminStatus,
   setStopCoreBeforeAdminRestart
@@ -620,7 +625,17 @@ function setupCoreListeners(
     ])
   }
 
-  const completeCoreStartup = async (): Promise<void> => {
+  // 启动收尾必须等初始 provider 拉完：内核刚监听上 API 时组里还没有节点，
+  // 这时候刷新代理组，UI 会锁定一份「选中项回落到第一个节点」的快照，
+  // 之后再没有事件纠正它，只能等 30s 轮询。
+  const completeStartupAfterInitialProvider = async (
+    initialProvider: Promise<InitialProviderSignal>
+  ): Promise<void> => {
+    const signal = await initialProvider
+    if (signal === 'closed') return
+    if (signal === 'timeout') {
+      managerLogger.info('Initial provider log not observed, completing core startup anyway')
+    }
     try {
       mainWindow?.webContents.send('groupsUpdated')
       mainWindow?.webContents.send('rulesUpdated')
@@ -628,7 +643,11 @@ function setupCoreListeners(
     } catch (error) {
       managerLogger.warn('Failed to sync runtime config to Gist', error)
     }
-    await patchMihomoConfig({ 'log-level': logLevel })
+    try {
+      await patchMihomoConfig({ 'log-level': logLevel })
+    } catch (error) {
+      managerLogger.warn('Failed to sync log level after core startup', error)
+    }
   }
 
   proc.once('error', (error) => {
@@ -740,32 +759,19 @@ function setupCoreListeners(
     }
 
     // API 就绪
-    const isApiReady =
-      (process.platform !== 'win32' && str.includes('RESTful API unix listening at')) ||
-      (process.platform === 'win32' && str.includes('RESTful API pipe listening at'))
+    if (isCoreApiReadyLine(str)) {
+      // 监听要在同一个 tick 挂上：provider 就绪日志紧跟在 API 就绪那行后面，
+      // 中间去建立四条 API 流就会漏掉这段输出，收尾只能干等到超时。
+      const initialProvider = waitForInitialProvider(proc.stdout)
 
-    if (isApiReady) {
-      resolveStartup([
-        new Promise((innerResolve) => {
-          proc.stdout?.on('data', async (innerData) => {
-            if (
-              innerData
-                .toString()
-                .toLowerCase()
-                .includes('start initial compatible provider default')
-            ) {
-              completeCoreStartup()
-                .then(() => innerResolve())
-                .catch((error) => {
-                  managerLogger.warn('Failed to complete core startup', error)
-                  innerResolve()
-                })
-            }
-          })
-        })
-      ])
+      try {
+        await startMihomoApiStreams()
+      } catch (error) {
+        rejectStartup(error)
+        return
+      }
 
-      await startMihomoApiStreams()
+      resolveStartup([completeStartupAfterInitialProvider(initialProvider)])
     }
   })
 
@@ -775,11 +781,14 @@ function setupCoreListeners(
       return
     }
 
+    // provider 日志可能早于 hook 就打印出来了，监听要先挂上，否则只能等到超时。
+    const initialProvider = waitForInitialProvider(proc.stdout)
+
     hookWaiter.promise
       .then(async () => {
         managerLogger.info('Core post-up hook triggered')
         await startMihomoApiStreams()
-        resolveStartup([completeCoreStartup()])
+        resolveStartup([completeStartupAfterInitialProvider(initialProvider)])
       })
       .catch(rejectStartup)
   }
