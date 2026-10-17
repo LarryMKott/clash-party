@@ -25,6 +25,9 @@ interface IpcApi {
   // Mihomo API
   mihomoVersion: () => Promise<IMihomoVersion>
   runPreflight: () => Promise<PreflightReport>
+  startSafeMode: () => Promise<void>
+  exitSafeMode: () => Promise<void>
+  getSafeModeState: () => Promise<boolean>
   mihomoCloseConnection: (id: string) => Promise<void>
   mihomoCloseAllConnections: (group?: string) => Promise<void>
   mihomoRules: () => Promise<IMihomoRulesInfo>
@@ -287,6 +290,9 @@ export const {
   // Mihomo API
   mihomoVersion,
   runPreflight,
+  startSafeMode,
+  exitSafeMode,
+  getSafeModeState,
   mihomoCloseConnection,
   mihomoCloseAllConnections,
   mihomoRules,

@@ -5,6 +5,9 @@ const validInvokeChannels = [
   // Mihomo API
   'mihomoVersion',
   'runPreflight',
+  'startSafeMode',
+  'exitSafeMode',
+  'getSafeModeState',
   'mihomoCloseConnection',
   'mihomoCloseAllConnections',
   'mihomoRules',

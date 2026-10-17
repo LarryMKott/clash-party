@@ -34,6 +34,7 @@ import i18next from '../../shared/i18n'
 import { managerLogger } from '../utils/logger'
 import { createCoreLogWritableStream } from '../utils/logFile'
 import { appendPreflightHint } from './preflight'
+import { clearSafeModeWorkDir, prepareSafeModeWorkDir } from './safeMode'
 import {
   startMihomoTraffic,
   startMihomoConnections,
@@ -109,6 +110,8 @@ let child: ChildProcess | null = null
 let coreProcessWatchdog: CoreProcessWatchdog | null = null
 let isRestarting = false
 let coreOperationPhase: 'initializing' | 'ready' | 'blocked' | 'shutting-down' = 'ready'
+// 安全模式只在本次运行内有效：重启应用即回到正常配置，避免用户忘了自己开过
+let safeModeActive = false
 let coreOperationTail: Promise<void> = Promise.resolve()
 let pendingRestart: Promise<void> | null = null
 let cancelActiveStartup: ((reason: Error) => void) | null = null
@@ -454,9 +457,46 @@ function buildCoreEnv(safePath?: string, ageSecretKey?: string): NodeJS.ProcessE
   return env
 }
 
+// 安全模式下的配置准备：只保证「能起来且能上网」，其余一切照旧跳过
+async function prepareSafeModeCore(detached: boolean, skipStop: boolean): Promise<CoreConfig> {
+  const { core = 'mihomo', mihomoCpuPriority = 'PRIORITY_NORMAL' } = await getAppConfig()
+  const { workDir } = await prepareSafeModeWorkDir(dataDir())
+
+  await stopPidFileCore()
+  if (!skipStop && hasCoreProcess()) {
+    await stopCoreInternal()
+  }
+  await cleanupSocketFile()
+
+  const ipcPath = getMihomoIpcPath()
+  managerLogger.info(`Using IPC path: ${ipcPath}`)
+  if (process.platform === 'win32') {
+    await validateWindowsPipeAccess(ipcPath)
+  }
+  managerLogger.warn(`Starting core in SAFE MODE, workDir: ${workDir}`)
+
+  return {
+    corePath: mihomoCorePath(core),
+    workDir,
+    ipcPath,
+    logLevel: 'info',
+    // 安全模式的全部意义就是关掉 TUN 与自动 DNS，让网络先恢复
+    tunEnabled: false,
+    autoSetDNS: false,
+    cpuPriority: mihomoCpuPriority,
+    ageSecretKey: '',
+    detached,
+    startupMode: 'log',
+    dnsGuard: { controlDns: false, autoDisabled: false, fingerprint: null, request: null }
+  }
+}
+
 // 准备核心配置
 async function prepareCore(detached: boolean, skipStop = false): Promise<CoreConfig> {
   await ensureRuntimeFiles()
+
+  // 安全模式完全绕开正常链路：不生成运行时配置、不跑覆写、不校验用户配置、不开 TUN
+  if (safeModeActive) return await prepareSafeModeCore(detached, skipStop)
 
   const [appConfig, mihomoConfig] = await Promise.all([getAppConfig(), getControledMihomoConfig()])
 
@@ -1019,6 +1059,43 @@ async function restartCoreAfterUnexpectedExit(): Promise<void> {
 export function restartCore(forceStop = false): Promise<void> {
   ensureCoreOperationAllowed()
   return trackCoreRestart(() => restartCoreOnce(forceStop))
+}
+
+export async function getSafeModeState(): Promise<boolean> {
+  return safeModeActive
+}
+
+/**
+ * 进入安全模式：生成一份「订阅主体 + 端口 + 关 TUN、不带覆写」的配置，
+ * 用核心 -t 校验通过后才真正重启。校验失败会抛错并退出安全模式，
+ * 免得用户以为自己在安全模式里、其实跑的是另一份坏配置。
+ */
+export async function startSafeMode(): Promise<void> {
+  if (safeModeActive) return
+  safeModeActive = true
+  try {
+    await restartCore(true)
+  } catch (error) {
+    safeModeActive = false
+    await clearSafeModeWorkDir(dataDir())
+    throw error
+  }
+}
+
+/** 退出安全模式：回到正常配置并重启，顺手清掉临时工作目录。 */
+export async function exitSafeMode(): Promise<void> {
+  if (!safeModeActive) return
+  const previous = safeModeActive
+  safeModeActive = false
+  try {
+    await restartCore(true)
+  } catch (error) {
+    // 正常配置起不来时退回安全模式，至少保持可用
+    safeModeActive = previous
+    throw error
+  } finally {
+    await clearSafeModeWorkDir(dataDir())
+  }
 }
 
 // 系统挂起会带走 TUN 网卡上的路由和 DNS 劫持规则：唤醒后内核进程还在、HTTP 代理端口

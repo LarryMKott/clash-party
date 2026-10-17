@@ -43,7 +43,9 @@ import {
   fetchMihomoTags,
   installSpecificMihomoCore,
   clearMihomoVersionCache,
-  mihomoUpgradeUI
+  mihomoUpgradeUI,
+  getSafeModeState,
+  exitSafeMode
 } from '@renderer/utils/ipc'
 import React, { useState, useEffect } from 'react'
 import InterfaceModal from '@renderer/components/mihomo/interface-modal'
@@ -172,6 +174,30 @@ const Mihomo: React.FC = () => {
   const [upgrading, setUpgrading] = useState(false)
   const [lanOpen, setLanOpen] = useState(false)
   const [preflightOpen, setPreflightOpen] = useState(false)
+  const [safeMode, setSafeMode] = useState(false)
+
+  const refreshSafeMode = (): void => {
+    getSafeModeState()
+      .then(setSafeMode)
+      .catch(() => setSafeMode(false))
+  }
+
+  useEffect(refreshSafeMode, [])
+
+  const leaveSafeMode = async (): Promise<void> => {
+    try {
+      await exitSafeMode()
+      toast.success(t('mihomo.safeMode.exited'))
+    } catch (error) {
+      toast.error(
+        `${t('mihomo.safeMode.exitFailed')}: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      )
+    } finally {
+      refreshSafeMode()
+    }
+  }
   const { isOpen, onOpen, onClose } = useDisclosure()
   const [tags, setTags] = useState<{ name: string; zipball_url: string; tarball_url: string }[]>([])
   const [loadingTags, setLoadingTags] = useState(false)
@@ -356,18 +382,43 @@ const Mihomo: React.FC = () => {
   return (
     <>
       {lanOpen && <InterfaceModal onClose={() => setLanOpen(false)} />}
-      {preflightOpen && <PreflightModal onClose={() => setPreflightOpen(false)} />}
+      {preflightOpen && (
+        <PreflightModal
+          onClose={() => {
+            setPreflightOpen(false)
+            refreshSafeMode()
+          }}
+        />
+      )}
       <BasePage
         title={t('mihomo.title')}
         header={
-          <Button
-            size="sm"
-            variant="flat"
-            className="app-nodrag"
-            onPress={() => setPreflightOpen(true)}
-          >
-            {t('mihomo.preflight.action')}
-          </Button>
+          <div className="flex items-center gap-2">
+            {safeMode && (
+              <Chip size="sm" color="warning" variant="flat" className="app-nodrag">
+                {t('mihomo.safeMode.active')}
+              </Chip>
+            )}
+            {safeMode && (
+              <Button
+                size="sm"
+                variant="flat"
+                color="warning"
+                className="app-nodrag"
+                onPress={leaveSafeMode}
+              >
+                {t('mihomo.safeMode.exit')}
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="flat"
+              className="app-nodrag"
+              onPress={() => setPreflightOpen(true)}
+            >
+              {t('mihomo.preflight.action')}
+            </Button>
+          </div>
         }
       >
         {/* Smart 内核设置 */}

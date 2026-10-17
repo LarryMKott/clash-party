@@ -10,7 +10,8 @@ import {
 import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BiCheckCircle, BiErrorCircle, BiInfoCircle } from 'react-icons/bi'
-import { runPreflight } from '@renderer/utils/ipc'
+import { toast } from '@renderer/components/base/toast'
+import { runPreflight, startSafeMode } from '@renderer/utils/ipc'
 import {
   describePreflightIssue,
   type PreflightCheck,
@@ -35,6 +36,24 @@ const PreflightModal: React.FC<Props> = ({ onClose }) => {
   const { t } = useTranslation()
   const [report, setReport] = useState<PreflightReport>()
   const [loading, setLoading] = useState(true)
+  const [entering, setEntering] = useState(false)
+
+  const enterSafeMode = async (): Promise<void> => {
+    setEntering(true)
+    try {
+      await startSafeMode()
+      toast.success(t('mihomo.preflight.safeModeStarted'))
+      onClose()
+    } catch (error) {
+      toast.error(
+        `${t('mihomo.preflight.safeModeFailed')}: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      )
+    } finally {
+      setEntering(false)
+    }
+  }
 
   const load = useCallback(async (): Promise<void> => {
     setLoading(true)
@@ -102,6 +121,16 @@ const PreflightModal: React.FC<Props> = ({ onClose }) => {
           )}
         </ModalBody>
         <ModalFooter>
+          <Button
+            size="sm"
+            color="warning"
+            variant="flat"
+            className="mr-auto"
+            isLoading={entering}
+            onPress={enterSafeMode}
+          >
+            {t('mihomo.preflight.safeMode')}
+          </Button>
           <Button
             size="sm"
             variant="light"

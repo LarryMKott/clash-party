@@ -76,7 +76,10 @@ import {
   requestTunPermissions,
   checkHighPrivilegeCore,
   showTunPermissionDialog,
-  showErrorDialog
+  showErrorDialog,
+  startSafeMode,
+  exitSafeMode,
+  getSafeModeState
 } from '../core/manager'
 import { runPreflight } from '../core/preflight'
 import { triggerSysProxy } from '../sys/sysproxy'
@@ -265,6 +268,9 @@ const asyncHandlers: Record<string, AsyncFn> = {
   // Mihomo API
   mihomoVersion,
   runPreflight,
+  startSafeMode,
+  exitSafeMode,
+  getSafeModeState,
   mihomoCloseConnection,
   mihomoCloseAllConnections,
   mihomoRules,
