@@ -75,6 +75,7 @@ const LiveGlobeBase: React.FC<LiveGlobeProps> = ({ activeByIso }) => {
     if (!el) return
     let disposed = false
     let globe: GlobeInstance | null = null
+    let observer: ResizeObserver | null = null
 
     const applyBuckets = (g: GlobeInstance): void => {
       const buckets: { region: RegionInfo; count: number }[] = []
@@ -180,6 +181,19 @@ const LiveGlobeBase: React.FC<LiveGlobeProps> = ({ activeByIso }) => {
       applyBuckets(globe)
       globeRef.current = globe
 
+      // 画布尺寸必须跟着容器走：窗口最大化/还原、侧栏断点换列都会改变容器大小，
+      // 只按创建时尺寸渲染会让球心停在旧位置上，看起来就是「地球没居中」。
+      const syncSize = (): void => {
+        const g = globeRef.current
+        if (!g) return
+        const width = el.clientWidth
+        const height = el.clientHeight
+        if (width > 0 && height > 0) g.width(width).height(height)
+      }
+      observer = new ResizeObserver(syncSize)
+      observer.observe(el)
+      syncSize()
+
       fetch(countriesUrl)
         .then((r) => r.json())
         .then((data) => {
@@ -192,6 +206,7 @@ const LiveGlobeBase: React.FC<LiveGlobeProps> = ({ activeByIso }) => {
 
     return (): void => {
       disposed = true
+      observer?.disconnect()
       globe?._destructor()
       globe = null
       globeRef.current = null
@@ -227,7 +242,12 @@ const LiveGlobeBase: React.FC<LiveGlobeProps> = ({ activeByIso }) => {
     globe.ringsData(points)
   }, [activeByIso, t])
 
-  return <div ref={containerRef} className="h-full w-full" />
+  return (
+    // 外层 flex 居中 + 正方形视口：无论窗口多宽，球心都落在中列正中
+    <div className="flex h-full w-full items-center justify-center">
+      <div ref={containerRef} className="relative aspect-square h-full max-h-full max-w-full" />
+    </div>
+  )
 }
 
 const LiveGlobe = memo(LiveGlobeBase)
