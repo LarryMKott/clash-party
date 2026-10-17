@@ -147,10 +147,9 @@ jobs:
           npm_config_arch: ${{ matrix.arch }}
           npm_config_target_arch: ${{ matrix.arch }}
         run: pnpm install
-      - name: Update Version for Dev Build
-        if: github.event_name == 'workflow_dispatch'
-        env:
-          GITHUB_EVENT_NAME: workflow_dispatch
+      - name: Resolve Build Version
+        # 正式版版本号取自 tag（如 v2.0.4），dev 构建生成 2.0.3-d1017.<sha>。
+        # GITHUB_EVENT_NAME 由 Actions 自动注入，无需显式声明。
         run: node scripts/update-version.mjs
       - name: Prepare
         env:
@@ -170,8 +169,6 @@ jobs:
           }
       - name: Generate checksums
         run: pnpm checksum setup.exe portable.7z
-      - name: Copy Legacy Artifacts
-        run: pnpm copy-legacy
       - name: Upload Artifacts
         if: startsWith(github.ref, 'refs/heads/')
         uses: actions/upload-artifact@v6
@@ -234,10 +231,9 @@ jobs:
           (Get-Content electron-builder.yml) -replace 'windows', 'win7' | Set-Content electron-builder.yml
           # Electron 22 requires CJS format
           (Get-Content package.json) -replace '"type": "module"', '"type": "commonjs"' | Set-Content package.json
-      - name: Update Version for Dev Build
-        if: github.event_name == 'workflow_dispatch'
-        env:
-          GITHUB_EVENT_NAME: workflow_dispatch
+      - name: Resolve Build Version
+        # 正式版版本号取自 tag（如 v2.0.4），dev 构建生成 2.0.3-d1017.<sha>。
+        # GITHUB_EVENT_NAME 由 Actions 自动注入，无需显式声明。
         run: node scripts/update-version.mjs
       - name: Prepare
         env:
@@ -259,8 +255,6 @@ jobs:
           }
       - name: Generate checksums
         run: pnpm checksum setup.exe portable.7z
-      - name: Copy Legacy Artifacts
-        run: pnpm copy-legacy
       - name: Upload Artifacts
         if: startsWith(github.ref, 'refs/heads/')
         uses: actions/upload-artifact@v6
@@ -324,10 +318,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libarchive-tools
-      - name: Update Version for Dev Build
-        if: github.event_name == 'workflow_dispatch'
-        env:
-          GITHUB_EVENT_NAME: workflow_dispatch
+      - name: Resolve Build Version
+        # 正式版版本号取自 tag（如 v2.0.4），dev 构建生成 2.0.3-d1017.<sha>。
+        # GITHUB_EVENT_NAME 由 Actions 自动注入，无需显式声明。
         run: node scripts/update-version.mjs
       - name: Prepare
         env:
@@ -341,8 +334,6 @@ jobs:
         run: pnpm build:linux --${{ matrix.arch }}
       - name: Generate checksums
         run: pnpm checksum .deb .rpm .pkg.tar.zst
-      - name: Copy Legacy Artifacts
-        run: pnpm copy-legacy
       - name: Upload Artifacts
         if: startsWith(github.ref, 'refs/heads/')
         uses: actions/upload-artifact@v6
@@ -403,10 +394,9 @@ jobs:
           npm_config_arch: ${{ matrix.arch }}
           npm_config_target_arch: ${{ matrix.arch }}
         run: pnpm install
-      - name: Update Version for Dev Build
-        if: github.event_name == 'workflow_dispatch'
-        env:
-          GITHUB_EVENT_NAME: workflow_dispatch
+      - name: Resolve Build Version
+        # 正式版版本号取自 tag（如 v2.0.4），dev 构建生成 2.0.3-d1017.<sha>。
+        # GITHUB_EVENT_NAME 由 Actions 自动注入，无需显式声明。
         run: node scripts/update-version.mjs
       - name: Prepare
         env:
@@ -483,8 +473,6 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       - name: Generate checksums
         run: pnpm checksum .pkg
-      - name: Copy Legacy Artifacts
-        run: pnpm copy-legacy
       - name: Upload Artifacts
         if: startsWith(github.ref, 'refs/heads/')
         uses: actions/upload-artifact@v6
@@ -541,10 +529,9 @@ jobs:
         run: |
           pnpm install
           pnpm add -D electron@32.2.2
-      - name: Update Version for Dev Build
-        if: github.event_name == 'workflow_dispatch'
-        env:
-          GITHUB_EVENT_NAME: workflow_dispatch
+      - name: Resolve Build Version
+        # 正式版版本号取自 tag（如 v2.0.4），dev 构建生成 2.0.3-d1017.<sha>。
+        # GITHUB_EVENT_NAME 由 Actions 自动注入，无需显式声明。
         run: node scripts/update-version.mjs
       - name: Prepare
         env:
@@ -622,8 +609,6 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       - name: Generate checksums
         run: pnpm checksum .pkg
-      - name: Copy Legacy Artifacts
-        run: pnpm copy-legacy
       - name: Upload Artifacts
         if: startsWith(github.ref, 'refs/heads/')
         uses: actions/upload-artifact@v6
@@ -672,10 +657,9 @@ jobs:
           cache: 'pnpm'
       - name: Install Dependencies
         run: pnpm install
-      - name: Update Version for Dev Build
-        if: github.event_name == 'workflow_dispatch'
-        env:
-          GITHUB_EVENT_NAME: workflow_dispatch
+      - name: Resolve Build Version
+        # 正式版版本号取自 tag（如 v2.0.4），dev 构建生成 2.0.3-d1017.<sha>。
+        # GITHUB_EVENT_NAME 由 Actions 自动注入，无需显式声明。
         run: node scripts/update-version.mjs
       - name: Preview Generated Changelog
         run: pnpm changelog

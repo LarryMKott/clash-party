@@ -9,6 +9,7 @@ import {
 import { resolveChangelog } from './changelog.mjs'
 
 const chat_id = '@MihomoPartyChannel'
+const repo = process.env.GITHUB_REPOSITORY || 'mihomo-party-org/clash-party'
 // 标题里已经有版本号，这里不再重复生成 `# version` 一级标题
 const { markdown: changelog } = resolveChangelog({ version: null })
 
@@ -48,15 +49,15 @@ if (isDevRelease) {
   const shortCommitSha = getGitCommitHash(true)
   const commitSha = getGitCommitHash(false)
 
-  content = `<b>🚧 <a href="https://github.com/mihomo-party-org/clash-party/releases/tag/dev">Clash Party Dev Build</a> 开发版本发布</b>\n\n`
+  content = `<b>🚧 <a href="https://github.com/${repo}/releases/tag/dev">Clash Party Dev Build</a> 开发版本发布</b>\n\n`
   content += `<b>基于版本:</b> ${version}\n`
-  content += `<b>提交哈希:</b> <a href="https://github.com/mihomo-party-org/clash-party/commit/${commitSha}">${shortCommitSha}</a>\n\n`
+  content += `<b>提交哈希:</b> <a href="https://github.com/${repo}/commit/${commitSha}">${shortCommitSha}</a>\n\n`
   content += `<b>更新日志:</b>\n`
   content += convertMarkdownToTelegramHTML(changelog)
   content += '\n\n<b>⚠️ 注意：这是开发版本，可能存在不稳定性，仅供测试使用</b>\n'
 } else {
   // 正式版本通知
-  content = `<b>🌟 <a href="https://github.com/mihomo-party-org/clash-party/releases/tag/v${version}">Clash Party v${version}</a> 正式发布</b>\n\n`
+  content = `<b>🌟 <a href="https://github.com/${repo}/releases/tag/v${version}">Clash Party v${version}</a> 正式发布</b>\n\n`
   content += convertMarkdownToTelegramHTML(changelog)
 }
 

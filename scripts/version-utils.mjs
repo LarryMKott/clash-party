@@ -20,6 +20,13 @@ export function getCurrentMonthDate() {
   return `${month}${day}`
 }
 
+// 从发布 tag 解析版本号：fork 自己维护补丁号，tag、package.json、产物名、latest.yml 同源。
+// 只接受 vX.Y.Z，带后缀的旧 tag（v2.0.3-fork.8）不参与版本推导。
+export function normalizeTagVersion(ref) {
+  const match = /^v(\d+\.\d+\.\d+)$/.exec((ref || '').trim())
+  return match ? match[1] : ''
+}
+
 // 从package.json读取基础版本号
 export function getBaseVersion() {
   try {
@@ -31,6 +38,11 @@ export function getBaseVersion() {
     console.error('Failed to read package.json:', error.message)
     return '1.0.0'
   }
+}
+
+// 正式版版本号：优先取发布 tag，本地构建回退 package.json
+export function getReleaseVersion() {
+  return normalizeTagVersion(process.env.GITHUB_REF_NAME) || getBaseVersion()
 }
 
 // 生成dev版本号
@@ -56,12 +68,12 @@ export function getProcessedVersion() {
   if (isDevBuild()) {
     return getDevVersion()
   } else {
-    return getBaseVersion()
+    return getReleaseVersion()
   }
 }
 
 // 生成下载URL：fork/自建仓库时指向 GITHUB_REPOSITORY，未注入时回退上游。
-// tag 构建用真实 tag 名（如 v2.0.3-fork.4），保证链接与发布版本一致。
+// 正式版 tag 与版本号一致（v2.0.4），链接直接来自 tag。
 export function getDownloadUrl(isDev, version) {
   const repo = process.env.GITHUB_REPOSITORY || 'mihomo-party-org/clash-party'
   const base = `https://github.com/${repo}/releases/download`

@@ -23,6 +23,10 @@ const GITHUB_PROXIES = [
   'https://download.mihomo.party'
 ]
 
+// 当前 fork 的发布仓库：checkUpdate 用的 latest.yml、产物名里的 fireworks 标识都以此为准。
+// 同步上游时只需改这一处（上游为 mihomo-party-org/mihomo-party）。
+const RELEASE_REPO = 'LarryMKott/clash-party'
+
 let updateInstallPromise: Promise<void> | undefined
 
 interface GitHubReleaseAsset {
@@ -77,7 +81,7 @@ async function getGitHubAssetSha256(
 ): Promise<string> {
   const releaseTag = encodeURIComponent(`v${version}`)
   const res = await chromeRequest.get<GitHubRelease>(
-    `https://api.github.com/repos/mihomo-party-org/mihomo-party/releases/tags/${releaseTag}`,
+    `https://api.github.com/repos/${RELEASE_REPO}/releases/tags/${releaseTag}`,
     {
       headers: {
         Accept: 'application/vnd.github+json',
@@ -99,8 +103,7 @@ async function getGitHubAssetSha256(
 export async function checkUpdate(): Promise<IAppVersion | undefined> {
   const [{ 'mixed-port': mixedPort = DEFAULT_MIHOMO_PORTS.mixed }, { githubProxy = '' }] =
     await Promise.all([getControledMihomoConfig(), getAppConfig()])
-  const githubUrl =
-    'https://github.com/mihomo-party-org/mihomo-party/releases/latest/download/latest.yml'
+  const githubUrl = `https://github.com/${RELEASE_REPO}/releases/latest/download/latest.yml`
   const res = await tryDownload(buildDownloadUrls(githubUrl, githubProxy), {
     headers: { 'Content-Type': 'application/octet-stream' },
     proxy: updaterProxy(mixedPort),
@@ -150,13 +153,14 @@ export function downloadAndInstallUpdate(version: string): Promise<void> {
 async function installUpdate(version: string): Promise<void> {
   const [{ 'mixed-port': mixedPort = DEFAULT_MIHOMO_PORTS.mixed }, { githubProxy = '' }] =
     await Promise.all([getControledMihomoConfig(), getAppConfig()])
-  const githubBase = `https://github.com/mihomo-party-org/mihomo-party/releases/download/v${version}/`
+  const githubBase = `https://github.com/${RELEASE_REPO}/releases/download/v${version}/`
+  // 产物名与 electron-builder.yml 的 artifactName 一一对应（含 fireworks 标识）
   const fileMap = {
-    'win32-x64': `clash-party-windows-${version}-x64-setup.exe`,
-    'win32-ia32': `clash-party-windows-${version}-ia32-setup.exe`,
-    'win32-arm64': `clash-party-windows-${version}-arm64-setup.exe`,
-    'darwin-x64': `clash-party-macos-${version}-x64.pkg`,
-    'darwin-arm64': `clash-party-macos-${version}-arm64.pkg`
+    'win32-x64': `clash-party-fireworks-windows-${version}-x64-setup.exe`,
+    'win32-ia32': `clash-party-fireworks-windows-${version}-ia32-setup.exe`,
+    'win32-arm64': `clash-party-fireworks-windows-${version}-arm64-setup.exe`,
+    'darwin-x64': `clash-party-fireworks-macos-${version}-x64.pkg`,
+    'darwin-arm64': `clash-party-fireworks-macos-${version}-arm64.pkg`
   }
   let file = fileMap[`${process.platform}-${process.arch}`]
   if (isPortable()) {
