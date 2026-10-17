@@ -21,6 +21,7 @@
     "prepare": "pnpm run hooks:install && node scripts/prepare.mjs",
     "prepare:dev": "pnpm run hooks:install && node scripts/update-version.mjs && node scripts/prepare.mjs",
     "updater": "node scripts/updater.mjs",
+    "changelog": "node scripts/changelog.mjs",
     "checksum": "node scripts/checksum.mjs",
     "copy-legacy": "node scripts/copy-legacy-artifacts.mjs",
     "test-copy-legacy": "node scripts/test-copy-legacy.mjs",

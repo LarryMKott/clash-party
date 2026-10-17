@@ -1,5 +1,4 @@
 import axios from 'axios'
-import { readFileSync } from 'fs'
 import {
   getProcessedVersion,
   isDevBuild,
@@ -7,9 +6,11 @@ import {
   generateDownloadLinksMarkdown,
   getGitCommitHash
 } from './version-utils.mjs'
+import { resolveChangelog } from './changelog.mjs'
 
 const chat_id = '@MihomoPartyChannel'
-const changelog = readFileSync('changelog.md', 'utf-8')
+// 标题里已经有版本号，这里不再重复生成 `# version` 一级标题
+const { markdown: changelog } = resolveChangelog({ version: null })
 
 // 获取处理后的版本号
 const version = getProcessedVersion()

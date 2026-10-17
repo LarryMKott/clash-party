@@ -4,6 +4,8 @@ resources/sidecar
 extra
 dist
 out
+latest.yml
+release-notes.md
 .DS_Store
 *.log*
 .idea

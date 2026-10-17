@@ -660,6 +660,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          # 修改记录按 commit 动态生成，需要完整历史与全部 tag
+          fetch-depth: 0
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
       - name: Setup Node.js
@@ -674,6 +677,8 @@ jobs:
         env:
           GITHUB_EVENT_NAME: workflow_dispatch
         run: node scripts/update-version.mjs
+      - name: Preview Generated Changelog
+        run: pnpm changelog
       - name: Telegram Notification
         if: startsWith(github.ref, 'refs/tags/v') && needs['detect-secrets'].outputs.has_telegram_token == 'true'
         env:
@@ -694,7 +699,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: latest.yml
-          body_path: changelog.md
+          body_path: release-notes.md
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish Dev Release
         if: github.event_name == 'workflow_dispatch'
@@ -702,7 +707,7 @@ jobs:
         with:
           tag_name: dev
           files: latest.yml
-          body_path: changelog.md
+          body_path: release-notes.md
           prerelease: true
           draft: false
           token: ${{ secrets.GITHUB_TOKEN }}
