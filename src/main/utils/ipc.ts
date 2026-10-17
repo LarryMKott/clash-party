@@ -78,6 +78,7 @@ import {
   showTunPermissionDialog,
   showErrorDialog
 } from '../core/manager'
+import { runPreflight } from '../core/preflight'
 import { triggerSysProxy } from '../sys/sysproxy'
 import { checkUpdate, downloadAndInstallUpdate } from '../resolve/autoUpdater'
 import {
@@ -263,6 +264,7 @@ async function setTitleBarOverlay(overlay: Electron.TitleBarOverlayOptions): Pro
 const asyncHandlers: Record<string, AsyncFn> = {
   // Mihomo API
   mihomoVersion,
+  runPreflight,
   mihomoCloseConnection,
   mihomoCloseAllConnections,
   mihomoRules,

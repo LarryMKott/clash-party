@@ -4,6 +4,7 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron'
 const validInvokeChannels = [
   // Mihomo API
   'mihomoVersion',
+  'runPreflight',
   'mihomoCloseConnection',
   'mihomoCloseAllConnections',
   'mihomoRules',

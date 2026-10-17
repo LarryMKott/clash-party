@@ -6,6 +6,7 @@ import type {
   TrafficUsageImportBatch,
   TrafficUsageOverview
 } from '../../../shared/trafficUsage'
+import type { PreflightReport } from '../../../shared/preflight'
 
 function checkIpcError<T>(response: unknown): T {
   if (response && typeof response === 'object' && 'invokeError' in response) {
@@ -23,6 +24,7 @@ async function invoke<T>(channel: string, ...args: unknown[]): Promise<T> {
 interface IpcApi {
   // Mihomo API
   mihomoVersion: () => Promise<IMihomoVersion>
+  runPreflight: () => Promise<PreflightReport>
   mihomoCloseConnection: (id: string) => Promise<void>
   mihomoCloseAllConnections: (group?: string) => Promise<void>
   mihomoRules: () => Promise<IMihomoRulesInfo>
@@ -284,6 +286,7 @@ const ipc = new Proxy({} as IpcApi, {
 export const {
   // Mihomo API
   mihomoVersion,
+  runPreflight,
   mihomoCloseConnection,
   mihomoCloseAllConnections,
   mihomoRules,

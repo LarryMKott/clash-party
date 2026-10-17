@@ -47,6 +47,7 @@ import {
 } from '@renderer/utils/ipc'
 import React, { useState, useEffect } from 'react'
 import InterfaceModal from '@renderer/components/mihomo/interface-modal'
+import PreflightModal from '@renderer/components/mihomo/preflight-modal'
 import { MdDeleteForever, MdOpenInNew } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
 import {
@@ -170,6 +171,7 @@ const Mihomo: React.FC = () => {
   const [lgbmUrlInput, setLgbmUrlInput] = useState(lgbmUrl)
   const [upgrading, setUpgrading] = useState(false)
   const [lanOpen, setLanOpen] = useState(false)
+  const [preflightOpen, setPreflightOpen] = useState(false)
   const { isOpen, onOpen, onClose } = useDisclosure()
   const [tags, setTags] = useState<{ name: string; zipball_url: string; tarball_url: string }[]>([])
   const [loadingTags, setLoadingTags] = useState(false)
@@ -354,7 +356,20 @@ const Mihomo: React.FC = () => {
   return (
     <>
       {lanOpen && <InterfaceModal onClose={() => setLanOpen(false)} />}
-      <BasePage title={t('mihomo.title')}>
+      {preflightOpen && <PreflightModal onClose={() => setPreflightOpen(false)} />}
+      <BasePage
+        title={t('mihomo.title')}
+        header={
+          <Button
+            size="sm"
+            variant="flat"
+            className="app-nodrag"
+            onPress={() => setPreflightOpen(true)}
+          >
+            {t('mihomo.preflight.action')}
+          </Button>
+        }
+      >
         {/* Smart 内核设置 */}
         <SettingCard>
           <div
