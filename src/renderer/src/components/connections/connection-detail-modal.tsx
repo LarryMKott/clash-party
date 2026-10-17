@@ -21,6 +21,7 @@ import { getSimpleRulesEditor } from '@renderer/utils/ipc'
 import SettingItem from '../base/base-setting-item'
 import type { SimpleRuleEditor } from '../../../../shared/simple-config'
 import RuleEditorModal from '../rules/rule-editor-modal'
+import ConnectionExplain from './connection-explain'
 
 interface Props {
   connection: IMihomoConnectionDetail
@@ -208,6 +209,7 @@ const ConnectionDetailModal: React.FC<Props> = (props) => {
       <ModalContent className="flag-emoji break-all">
         <ModalHeader className="flex app-drag">{t('connections.detail.title')}</ModalHeader>
         <ModalBody>
+          <ConnectionExplain connection={connection} />
           <SettingItem title={t('connections.detail.establishTime')}>
             {dayjs(connection.start).fromNow()}
           </SettingItem>
