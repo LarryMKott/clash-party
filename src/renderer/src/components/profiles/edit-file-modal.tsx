@@ -4,6 +4,7 @@ import { getProfileStr, setProfileStr } from '@renderer/utils/ipc'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { BaseEditor } from '../base/base-editor'
+import ConfigLint from '../base/config-lint'
 
 interface Props {
   id: string
@@ -58,6 +59,7 @@ const EditFileModal: React.FC<Props> = (props) => {
           <BaseEditor language="yaml" value={currData} onChange={(value) => setCurrData(value)} />
         </ModalBody>
         <ModalFooter className="pt-0">
+          <ConfigLint source={currData} />
           <Button size="sm" variant="light" onPress={onClose}>
             {t('common.cancel')}
           </Button>

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { getOverride, mihomoHotReloadConfig, setOverride } from '@renderer/utils/ipc'
 import { useTranslation } from 'react-i18next'
 import { BaseEditor } from '../base/base-editor'
+import ConfigLint from '../base/config-lint'
 
 interface Props {
   id: string
@@ -49,6 +50,7 @@ const EditFileModal: React.FC<Props> = (props) => {
           />
         </ModalBody>
         <ModalFooter className="pt-0">
+          {language === 'yaml' && <ConfigLint source={currData} />}
           <Button size="sm" variant="light" onPress={onClose}>
             {t('common.cancel')}
           </Button>
