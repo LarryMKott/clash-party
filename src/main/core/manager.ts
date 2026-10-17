@@ -33,6 +33,7 @@ import { parseAgeSecretKeys } from '../utils/age'
 import i18next from '../../shared/i18n'
 import { managerLogger } from '../utils/logger'
 import { createCoreLogWritableStream } from '../utils/logFile'
+import { appendPreflightHint } from './preflight'
 import {
   startMihomoTraffic,
   startMihomoConnections,
@@ -384,7 +385,7 @@ export function initCoreWatcher(): void {
     try {
       await restartCore(true)
     } catch (e) {
-      safeShowErrorBox('mihomo.error.coreStartFailed', `${e}`)
+      safeShowErrorBox('mihomo.error.coreStartFailed', await appendPreflightHint(`${e}`))
     }
   })
 
@@ -1062,7 +1063,7 @@ export async function keepCoreAlive(): Promise<boolean> {
     }
     return Boolean(child?.pid)
   } catch (e) {
-    safeShowErrorBox('mihomo.error.coreStartFailed', `${e}`)
+    safeShowErrorBox('mihomo.error.coreStartFailed', await appendPreflightHint(`${e}`))
     return false
   }
 }

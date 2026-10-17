@@ -23,3 +23,23 @@ export interface PreflightReport {
   checked: number
   issues: PreflightCheck[]
 }
+
+type Translate = (key: string, options?: Record<string, unknown>) => string
+
+/**
+ * 把一条检查项渲染成可读文案。
+ *
+ * 可选参数（占用进程、行号）在这里拼成括号片段再塞进单条文案，
+ * 否则「有 owner / 没 owner」这种组合会逼出成倍的 i18n 键。
+ * 主进程的启动失败提示与渲染层的体检弹窗共用这一份，避免两边文案漂移。
+ */
+export function describePreflightIssue(check: PreflightCheck, t: Translate): string {
+  const params: Record<string, string | number> = { ...check.params }
+  if (check.id === 'portInUse') {
+    params.owner = check.params?.owner ? `（${check.params.owner}）` : ''
+  }
+  if (check.id === 'configInvalid') {
+    params.at = check.params?.line ? t('mihomo.preflight.atLine', { line: check.params.line }) : ''
+  }
+  return t(`mihomo.preflight.issue.${check.id}`, params)
+}

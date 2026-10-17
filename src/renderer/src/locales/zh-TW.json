@@ -196,6 +196,7 @@
   "mihomo.preflight.hint": "連接埠被占用時，先關掉占用的程式，或換一個連接埠再試。",
   "mihomo.preflight.rerun": "重新檢查",
   "mihomo.preflight.atLine": "（第 {{line}} 行）",
+  "mihomo.preflight.failedTitle": "啟動健檢發現 {{count}} 個問題：",
   "mihomo.preflight.issue.coreMissing": "找不到可執行的內核檔案：{{path}}",
   "mihomo.preflight.issue.portInUse": "連接埠 {{port}} 已被占用{{owner}}",
   "mihomo.preflight.issue.dataDirNotWritable": "資料目錄不可寫，設定和日誌都存不下來",

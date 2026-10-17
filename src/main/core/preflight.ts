@@ -11,6 +11,7 @@ import { createServer } from 'net'
 import { join } from 'path'
 import { promisify } from 'util'
 import type { PreflightCheck, PreflightLevel, PreflightReport } from '../../shared/preflight'
+import { describePreflightIssue } from '../../shared/preflight'
 
 const execFileAsync = promisify(execFile)
 
@@ -182,7 +183,12 @@ async function probeCoreAccessible(corePath: string): Promise<boolean> {
   }
 }
 
-export async function runPreflight(): Promise<PreflightReport> {
+export interface PreflightOptions {
+  /** 启动失败后的诊断场景：此刻内核本来就没在服务，端口被占恰恰是最可能的原因 */
+  forcePortCheck?: boolean
+}
+
+export async function runPreflight(options: PreflightOptions = {}): Promise<PreflightReport> {
   const { getAppConfig, getControledMihomoConfig, getProfileConfig, getProfileStr } =
     await import('../config')
   const { hasCoreProcess } = await import('./manager')
@@ -207,9 +213,10 @@ export async function runPreflight(): Promise<PreflightReport> {
     // 读不到配置就交给内核自己报错，这里不重复报
   }
 
-  // 内核已经在跑的时候它本来就占着这些端口，此时做端口检查只会制造假警报
+  // 内核已经在跑的时候它本来就占着这些端口，此时做端口检查只会制造假警报；
+  // 启动失败后的诊断会强制检查，因为那一刻端口被占正是要找的原因
   const ports: PreflightPort[] = []
-  if (!hasCoreProcess()) {
+  if (options.forcePortCheck || !hasCoreProcess()) {
     const declared = [
       controled['mixed-port'],
       controled['socks-port'],
@@ -244,4 +251,27 @@ export async function runPreflight(): Promise<PreflightReport> {
     admin: await checkAdminPrivileges().catch(() => false),
     expiredProfiles
   })
+}
+
+/**
+ * 内核启动失败时附在错误提示后面的体检结论。
+ *
+ * 原生错误弹窗只会显示启动异常本身（通常是一行 mihomo 的报错），
+ * 用户看不出是端口被占还是配置写坏了，这里顺手把体检结论接上去。
+ * 体检本身失败时安静返回空串，绝不因为查不出原因而让错误提示消失。
+ */
+export async function appendPreflightHint(message: string): Promise<string> {
+  try {
+    const report = await runPreflight({ forcePortCheck: true })
+    if (report.issues.length === 0) return message
+
+    const { default: i18next } = await import('i18next')
+    const translate = (key: string, options?: Record<string, unknown>): string =>
+      String(i18next.t(key, options))
+    const lines = report.issues.map((issue) => `• ${describePreflightIssue(issue, translate)}`)
+    const title = translate('mihomo.preflight.failedTitle', { count: report.issues.length })
+    return `${message}\n\n${title}\n${lines.join('\n')}`
+  } catch {
+    return message
+  }
 }

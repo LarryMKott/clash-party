@@ -196,6 +196,7 @@
   "mihomo.preflight.hint": "端口被占用时，先关掉占用的程序，或换一个端口再试。",
   "mihomo.preflight.rerun": "重新检查",
   "mihomo.preflight.atLine": "（第 {{line}} 行）",
+  "mihomo.preflight.failedTitle": "启动体检发现 {{count}} 个问题：",
   "mihomo.preflight.issue.coreMissing": "找不到可执行的内核文件：{{path}}",
   "mihomo.preflight.issue.portInUse": "端口 {{port}} 已被占用{{owner}}",
   "mihomo.preflight.issue.dataDirNotWritable": "数据目录不可写，配置和日志都存不下来",

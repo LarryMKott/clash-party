@@ -254,6 +254,7 @@
   "mihomo.preflight.hint": "If a port is occupied, quit the process holding it or switch to another port.",
   "mihomo.preflight.rerun": "Run again",
   "mihomo.preflight.atLine": " (line {{line}})",
+  "mihomo.preflight.failedTitle": "Health check found {{count}} issue(s):",
   "mihomo.preflight.issue.coreMissing": "No executable core binary found at {{path}}",
   "mihomo.preflight.issue.portInUse": "Port {{port}} is already in use{{owner}}",
   "mihomo.preflight.issue.dataDirNotWritable": "The data directory is not writable, configs and logs cannot be saved",

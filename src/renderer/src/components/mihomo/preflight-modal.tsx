@@ -11,7 +11,11 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BiCheckCircle, BiErrorCircle, BiInfoCircle } from 'react-icons/bi'
 import { runPreflight } from '@renderer/utils/ipc'
-import type { PreflightCheck, PreflightReport } from '../../../../shared/preflight'
+import {
+  describePreflightIssue,
+  type PreflightCheck,
+  type PreflightReport
+} from '../../../../shared/preflight'
 
 interface Props {
   onClose: () => void
@@ -47,19 +51,8 @@ const PreflightModal: React.FC<Props> = ({ onClose }) => {
     void load()
   }, [load])
 
-  // 有的检查项是「有就带上、没有就不显示」，把括号在渲染层拼好，i18n 只留一条文案
-  const describe = (check: PreflightCheck): string => {
-    const params: Record<string, string | number> = { ...check.params }
-    if (check.id === 'portInUse') {
-      params.owner = check.params?.owner ? `（${check.params.owner}）` : ''
-    }
-    if (check.id === 'configInvalid') {
-      params.at = check.params?.line
-        ? t('mihomo.preflight.atLine', { line: check.params.line })
-        : ''
-    }
-    return t(`mihomo.preflight.issue.${check.id}`, params)
-  }
+  // 文案与主进程共用同一份实现，避免两边的说法漂移
+  const describe = (check: PreflightCheck): string => describePreflightIssue(check, t)
 
   return (
     <Modal
