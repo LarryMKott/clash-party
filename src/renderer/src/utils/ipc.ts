@@ -104,6 +104,19 @@ interface IpcApi {
   getRuleStr: (id: string) => Promise<string>
   setRuleStr: (id: string, str: string) => Promise<void>
   getSimpleConfig: () => Promise<import('../../../shared/simple-config').SimpleState>
+  getSimpleNode: (name?: string) => Promise<import('../../../shared/simple-config').SimpleObject>
+  createSimpleNodes: (
+    values: import('../../../shared/simple-config').SimpleObject[]
+  ) => Promise<void>
+  saveSimpleNode: (
+    name: string,
+    value: import('../../../shared/simple-config').SimpleObject,
+    expected: import('../../../shared/simple-config').SimpleObject
+  ) => Promise<void>
+  removeSimpleNode: (
+    name: string,
+    expected: import('../../../shared/simple-config').SimpleObject
+  ) => Promise<void>
   getSimpleRulesEditor: () => Promise<import('../../../shared/simple-config').SimpleRuleEditor>
   saveSimpleRules: (
     change: import('../../../shared/simple-config').SimpleRuleChange,
@@ -339,6 +352,10 @@ export const {
   getRuleStr,
   setRuleStr,
   getSimpleConfig,
+  getSimpleNode,
+  createSimpleNodes,
+  saveSimpleNode,
+  removeSimpleNode,
   getSimpleProxyGroup,
   getSimpleRulesEditor,
   saveSimpleRules,

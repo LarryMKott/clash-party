@@ -143,6 +143,10 @@ import {
 } from '../traffic/database'
 import {
   getSimpleConfig,
+  getSimpleNode,
+  createSimpleNodes,
+  saveSimpleNode,
+  removeSimpleNode,
   getSimpleProxyGroup,
   getSimpleRulesEditor,
   saveSimpleRules,
@@ -326,6 +330,10 @@ const asyncHandlers: Record<string, AsyncFn> = {
   getRuleStr,
   setRuleStr,
   getSimpleConfig,
+  getSimpleNode,
+  createSimpleNodes,
+  saveSimpleNode,
+  removeSimpleNode,
   getSimpleProxyGroup,
   getSimpleRulesEditor,
   saveSimpleRules,

@@ -637,8 +637,6 @@ function setupCoreListeners(
       managerLogger.info('Initial provider log not observed, completing core startup anyway')
     }
     try {
-      mainWindow?.webContents.send('groupsUpdated')
-      mainWindow?.webContents.send('rulesUpdated')
       await uploadRuntimeConfigIfChanged()
     } catch (error) {
       managerLogger.warn('Failed to sync runtime config to Gist', error)
