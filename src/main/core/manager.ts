@@ -1072,6 +1072,9 @@ export async function getSafeModeState(): Promise<boolean> {
  */
 export async function startSafeMode(): Promise<void> {
   if (safeModeActive) return
+  // 先校验再停机：restartCore 是「先停后起」，安全配置过不了 -t 的话
+  // 用户手里本来跑得好好的内核会先被停掉，等于点一个按钮把自己的网停了。
+  await prepareSafeModeWorkDir(dataDir())
   safeModeActive = true
   try {
     await restartCore(true)
