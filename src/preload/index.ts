@@ -8,6 +8,7 @@ const validInvokeChannels = [
   'startSafeMode',
   'exitSafeMode',
   'getSafeModeState',
+  'getQuotaStatus',
   'mihomoCloseConnection',
   'mihomoCloseAllConnections',
   'mihomoRules',

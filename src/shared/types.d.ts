@@ -599,6 +599,14 @@ interface ISubscriptionUserInfo {
   expire: number
 }
 
+/** 额度估算基准：记录「某个时刻已经用掉多少」，用于推算日均消耗 */
+interface IQuotaBaseline {
+  used: number
+  at: number
+  /** 建立基准时的套餐总额，总额变化（升级/降级）即视为新周期 */
+  total?: number
+}
+
 interface IProfileItem {
   id: string
   type: 'remote' | 'local' | 'plugin'
@@ -623,6 +631,10 @@ interface IProfileItem {
   lastUpdateError?: string
   /** 最近一次订阅更新失败的时间戳 */
   lastUpdateErrorAt?: number
+  /** 额度估算基准，机场重置流量后重建 */
+  quotaBaseline?: IQuotaBaseline
+  /** 已经推送过通知的额度状态，状态好转时清除，避免重复打扰 */
+  quotaNotifiedState?: string
 }
 
 interface ISubStoreSub {

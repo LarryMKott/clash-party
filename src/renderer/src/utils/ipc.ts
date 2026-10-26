@@ -7,6 +7,7 @@ import type {
   TrafficUsageOverview
 } from '../../../shared/trafficUsage'
 import type { PreflightReport } from '../../../shared/preflight'
+import type { IQuotaStatus } from '../../../shared/quota'
 
 function checkIpcError<T>(response: unknown): T {
   if (response && typeof response === 'object' && 'invokeError' in response) {
@@ -28,6 +29,7 @@ interface IpcApi {
   startSafeMode: () => Promise<void>
   exitSafeMode: () => Promise<void>
   getSafeModeState: () => Promise<boolean>
+  getQuotaStatus: () => Promise<IQuotaStatus>
   mihomoCloseConnection: (id: string) => Promise<void>
   mihomoCloseAllConnections: (group?: string) => Promise<void>
   mihomoRules: () => Promise<IMihomoRulesInfo>
@@ -293,6 +295,7 @@ export const {
   startSafeMode,
   exitSafeMode,
   getSafeModeState,
+  getQuotaStatus,
   mihomoCloseConnection,
   mihomoCloseAllConnections,
   mihomoRules,

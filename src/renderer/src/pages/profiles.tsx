@@ -15,6 +15,7 @@ import {
 import BasePage from '@renderer/components/base/base-page'
 import { toast } from '@renderer/components/base/toast'
 import ProfileItem from '@renderer/components/profiles/profile-item'
+import QuotaPanel from '@renderer/components/profiles/quota-panel'
 import PluginItem from '@renderer/components/plugins/plugin-item'
 import PluginInstallModal from '@renderer/components/plugins/plugin-install-modal'
 import EditInfoModal from '@renderer/components/profiles/edit-info-modal'
@@ -70,6 +71,9 @@ const Profiles: React.FC = () => {
     customSubStoreUrl = ''
   } = appConfig || {}
   const { current, items = [] } = profileConfig || {}
+  // 订阅刷新或流量数字变化时让额度面板立刻重算，不必等 5 分钟轮询
+  const currentProfileItem = items.find((item) => item.id === current)
+  const quotaRefreshKey = `${currentProfileItem?.updated ?? 0}:${currentProfileItem?.extra?.upload ?? 0}:${currentProfileItem?.extra?.download ?? 0}`
   const navigate = useNavigate()
   const [sortedItems, setSortedItems] = useState(items)
   const [useProxy, setUseProxy] = useState(false)
@@ -614,6 +618,7 @@ const Profiles: React.FC = () => {
               ))}
             </div>
           )}
+          <QuotaPanel refreshKey={quotaRefreshKey} />
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
             <div
               className={`${fileOver ? 'blur-sm' : ''} grid sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 m-2`}
