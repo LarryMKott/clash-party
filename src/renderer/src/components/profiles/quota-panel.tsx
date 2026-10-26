@@ -1,7 +1,7 @@
 import { Card, CardBody, Chip, Progress, Tooltip } from '@heroui/react'
 import { calcTraffic } from '@renderer/utils/calc'
 import dayjs from '@renderer/utils/dayjs'
-import { getQuotaStatus } from '@renderer/utils/ipc'
+import { getQuotaHistory, getQuotaStatus } from '@renderer/utils/ipc'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
@@ -34,10 +34,15 @@ const QuotaPanel: React.FC<Props> = (props) => {
     refreshInterval: 5 * 60 * 1000,
     revalidateOnFocus: false
   })
+  const { data: history, mutate: mutateHistory } = useSWR('getQuotaHistory', getQuotaHistory, {
+    refreshInterval: 5 * 60 * 1000,
+    revalidateOnFocus: false
+  })
 
   useEffect(() => {
     void mutate()
-  }, [refreshKey, mutate])
+    void mutateHistory()
+  }, [refreshKey, mutate, mutateHistory])
 
   if (!quota || quota.state === 'unknown') return null
 
@@ -74,6 +79,9 @@ const QuotaPanel: React.FC<Props> = (props) => {
             date: dayjs(quota.exhaustedAt).format('YYYY-MM-DD')
           })
   }
+
+  const historyDays = history?.days ?? []
+  const historyMax = historyDays.reduce((max, day) => Math.max(max, day.bytes), 0)
 
   return (
     <Card className="mx-2 mt-2" shadow="sm">
@@ -127,6 +135,37 @@ const QuotaPanel: React.FC<Props> = (props) => {
           value={percent}
           aria-label={t('profiles.quota.remaining')}
         />
+        {history && history.windowBytes > 0 && (
+          <div className="mt-3">
+            <div className="flex items-baseline justify-between">
+              <p className="text-tiny text-default-500">{t('profiles.quota.history.title')}</p>
+              <p className="text-tiny text-default-500">
+                {t('profiles.quota.history.total', { bytes: calcTraffic(history.windowBytes) })}
+              </p>
+            </div>
+            <div className="mt-1 flex h-12 items-end gap-1">
+              {historyDays.map((day) => (
+                <div
+                  key={day.date}
+                  className={`flex-1 rounded-t ${day.bytes > 0 ? 'bg-primary' : 'bg-default-200'}`}
+                  style={{
+                    height: `${Math.max(
+                      day.bytes > 0 ? 8 : 3,
+                      Math.round((day.bytes / (historyMax || 1)) * 100)
+                    )}%`
+                  }}
+                  title={`${day.date} · ${calcTraffic(day.bytes)}`}
+                />
+              ))}
+            </div>
+            <p className="mt-1 text-tiny text-default-500">
+              {t('profiles.quota.history.average', {
+                rate: calcTraffic(history.averageDaily ?? 0)
+              })}
+            </p>
+            <p className="text-tiny text-default-400">{t('profiles.quota.history.note')}</p>
+          </div>
+        )}
         {quota.expiringSoon && quota.state !== 'expired' && (
           <p className="mt-1 text-tiny text-danger">
             {t('profiles.quota.expiringSoon', { days: QUOTA_EXPIRING_SOON_DAYS })}

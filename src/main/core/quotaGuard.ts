@@ -12,6 +12,7 @@ import {
 import type { IQuotaStatus, QuotaState } from '../../shared/quota'
 import { formatTraffic } from '../../shared/traffic-format'
 import { logger } from '../utils/logger'
+import { recordProfileQuotaUsage } from './quotaHistory'
 
 /** 额度只在订阅更新时刷新，30 分钟评估一次足够；真正变化的是我们自己的采样速率 */
 const CHECK_INTERVAL_MS = 30 * 60 * 1000
@@ -75,6 +76,9 @@ export async function checkQuota(options: { notify?: boolean } = {}): Promise<IQ
 
   const status = evaluateQuota(item.extra, item.quotaBaseline, now)
   if (!tracked) return status
+
+  // 额度巡检同时充当用量采样点：账本按天累计，面板据此画趋势
+  await recordProfileQuotaUsage(item.id, status.used, now)
 
   const notified = (item.quotaNotifiedState as QuotaState | undefined) || undefined
   if (notify && shouldNotifyQuota(notified, status.state)) {

@@ -102,6 +102,10 @@ export function trafficUsageDatabasePath(): string {
   return path.join(dataDir(), 'traffic-usage.db')
 }
 
+export function quotaHistoryPath(): string {
+  return path.join(dataDir(), 'quota-history.json')
+}
+
 export function controledMihomoConfigPath(): string {
   return path.join(dataDir(), 'mihomo.yaml')
 }
