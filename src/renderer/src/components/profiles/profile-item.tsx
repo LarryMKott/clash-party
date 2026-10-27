@@ -129,7 +129,7 @@ const ProfileItem: React.FC<Props> = (props) => {
         className: ''
       } as MenuItem)
     }
-    if (info.home) {
+    if (info.customHome || info.home) {
       list.unshift({
         key: 'home',
         label: t('profiles.home'),
@@ -175,7 +175,7 @@ const ProfileItem: React.FC<Props> = (props) => {
         break
       }
       case 'home': {
-        open(info.home)
+        open(info.customHome || info.home)
         break
       }
     }

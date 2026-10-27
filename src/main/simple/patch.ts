@@ -32,7 +32,8 @@ export function patchSimpleDraft(draft: SimpleDraft, patch: Partial<IMihomoConfi
   for (const module of Object.keys(patches) as SimpleModule[]) {
     const current: unknown = parse(modules[module])
     if (!isObject(current)) throw new Error(`${SIMPLE_MODULES[module]}: 应为 YAML 对象`)
-    const value = patches[module]!
+    const value = patches[module]
+    if (!value) continue
     // Hosts and policy editors submit complete maps, including deletions.
     const next = module === 'hosts' ? value : merge(current, value)
     if (module === 'dns' && Object.hasOwn(value, 'nameserver-policy')) {

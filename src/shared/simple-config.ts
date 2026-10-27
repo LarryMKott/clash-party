@@ -81,6 +81,7 @@ export interface SimpleSubscriptionOptions {
   mode: 'group' | 'nodes'
   prefix?: string
   providerName?: string
+  targetGroups?: string[]
   providerOptions?: SimpleObject
 }
 

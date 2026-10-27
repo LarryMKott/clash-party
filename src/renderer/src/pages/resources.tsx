@@ -2,6 +2,7 @@ import BasePage from '@renderer/components/base/base-page'
 import GeoData from '@renderer/components/resources/geo-data'
 import SmartModel from '@renderer/components/resources/smart-model'
 import RuleProvider from '@renderer/components/resources/rule-provider'
+import ProxyProvider from '@renderer/components/resources/proxy-provider'
 import { useAppConfig } from '@renderer/hooks/use-app-config'
 import { useTranslation } from 'react-i18next'
 import { useEffect, useState } from 'react'
@@ -24,6 +25,7 @@ const Resources: React.FC = () => {
     >
       {core === 'mihomo-smart' && <SmartModel />}
       <GeoData />
+      {!simple && <ProxyProvider />}
       <RuleProvider editing={simple && editing} />
     </BasePage>
   )

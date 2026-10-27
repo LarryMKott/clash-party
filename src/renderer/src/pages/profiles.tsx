@@ -20,11 +20,14 @@ import PluginItem from '@renderer/components/plugins/plugin-item'
 import PluginInstallModal from '@renderer/components/plugins/plugin-install-modal'
 import EditInfoModal from '@renderer/components/profiles/edit-info-modal'
 import SimpleLocalNodes from '@renderer/components/simple/simple-local-nodes'
+import SimpleSubscriptionGroupsModal from '@renderer/components/simple/simple-subscription-groups-modal'
 import { useProfileConfig } from '@renderer/hooks/use-profile-config'
 import { useAppConfig } from '@renderer/hooks/use-app-config'
 import { usePluginConfig } from '@renderer/hooks/use-plugin-config'
 import {
+  getAppConfig,
   getFilePath,
+  getProfileImportInfo,
   readTextFile,
   subStoreCollections,
   subStoreSubs,
@@ -81,7 +84,9 @@ const Profiles: React.FC = () => {
   const [userAgent, setUserAgent] = useState('')
   const [ageSecretKey, setAgeSecretKey] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
-  const [openInfoImport, setOpenInfoImport] = useState(false)
+  const [importItem, setImportItem] = useState<Partial<IProfileItem> | null>(null)
+  const [simpleImport, setSimpleImport] = useState(false)
+  const [simpleGroupProfileId, setSimpleGroupProfileId] = useState<string | null>(null)
   const [subStoreImporting, setSubStoreImporting] = useState(false)
   const [importing, setImporting] = useState(false)
   const [updating, setUpdating] = useState(false)
@@ -165,15 +170,44 @@ const Profiles: React.FC = () => {
     return items
   }, [subs, collections, t])
   const handleImport = async (): Promise<void> => {
+    const currentAppConfig = await getAppConfig()
+    if (currentAppConfig?.operationMode === 'simple') {
+      setSimpleImport(true)
+      setImportItem({
+        name: '',
+        type: 'remote',
+        url,
+        useProxy,
+        authToken: authToken || undefined,
+        userAgent: userAgent || undefined,
+        ageSecretKey: ageSecretKey || undefined
+      })
+      return
+    }
     setImporting(true)
+    let info: Partial<IProfileItem> = {}
+    try {
+      info = await getProfileImportInfo({
+        url,
+        useProxy,
+        authToken: authToken || undefined,
+        userAgent: userAgent || undefined
+      })
+    } catch {
+      // HEAD metadata is optional; continue with the original import values.
+    }
     await addProfileItem({
-      name: '',
+      name: info.name || '',
       type: 'remote',
       url,
       useProxy,
       authToken: authToken || undefined,
       userAgent: userAgent || undefined,
-      ageSecretKey: ageSecretKey || undefined
+      ageSecretKey: ageSecretKey || undefined,
+      home: info.home,
+      extra: info.extra,
+      interval: info.interval,
+      autoUpdate: info.interval !== undefined ? true : undefined
     })
     setUrl('')
     setAuthToken('')
@@ -252,7 +286,9 @@ const Profiles: React.FC = () => {
           try {
             const path = window.api.webUtils.getPathForFile(file)
             const content = await readTextFile(path)
-            await addProfileItemRef.current({ name: file.name, type: 'local', file: content })
+            const item = { name: file.name, type: 'local' as const, file: content }
+            if (simpleMode) setImportItem(item)
+            else await addProfileItemRef.current(item)
           } catch (e) {
             toast.error(String(e))
           }
@@ -278,7 +314,7 @@ const Profiles: React.FC = () => {
       element.removeEventListener('dragleave', handleDragLeave)
       element.removeEventListener('drop', handleDrop)
     }
-  }, [])
+  }, [simpleMode])
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 30000)
@@ -353,19 +389,25 @@ const Profiles: React.FC = () => {
         ) : undefined
       }
     >
-      {openInfoImport && (
+      {importItem && (
         <EditInfoModal
           mode="import"
-          item={{
-            id: '',
-            name: '',
-            type: 'remote',
-            url: '',
-            override: [],
-            useProxy
-          }}
+          item={importItem as IProfileItem}
+          simpleModeOverride={simpleImport ? true : undefined}
           addProfileItem={addProfileItem}
-          onClose={() => setOpenInfoImport(false)}
+          onImported={(item) => {
+            if (simpleImport || simpleMode) setSimpleGroupProfileId(item.id)
+          }}
+          onClose={() => {
+            setImportItem(null)
+            setSimpleImport(false)
+          }}
+        />
+      )}
+      {simpleGroupProfileId && (
+        <SimpleSubscriptionGroupsModal
+          profileId={simpleGroupProfileId}
+          onClose={() => setSimpleGroupProfileId(null)}
         />
       )}
       {simpleMode && (
@@ -478,7 +520,7 @@ const Profiles: React.FC = () => {
                             const sub = subs.find(
                               (sub) => sub.name === key.toString().replace('sub-', '')
                             )
-                            await addProfileItem({
+                            const item: Partial<IProfileItem> = {
                               name: sub?.displayName || sub?.name || '',
                               substore: !useCustomSubStore,
                               type: 'remote',
@@ -486,7 +528,9 @@ const Profiles: React.FC = () => {
                                 ? `${customSubStoreUrl}/download/${key.toString().replace('sub-', '')}?target=ClashMeta`
                                 : `/download/${key.toString().replace('sub-', '')}`,
                               useProxy
-                            })
+                            }
+                            if (simpleMode) setImportItem(item)
+                            else await addProfileItem(item)
                           } catch (e) {
                             toast.error(String(e))
                           } finally {
@@ -499,7 +543,7 @@ const Profiles: React.FC = () => {
                               (collection) =>
                                 collection.name === key.toString().replace('collection-', '')
                             )
-                            await addProfileItem({
+                            const item: Partial<IProfileItem> = {
                               name: collection?.displayName || collection?.name || '',
                               type: 'remote',
                               substore: !useCustomSubStore,
@@ -507,7 +551,9 @@ const Profiles: React.FC = () => {
                                 ? `${customSubStoreUrl}/download/collection/${key.toString().replace('collection-', '')}?target=ClashMeta`
                                 : `/download/collection/${key.toString().replace('collection-', '')}`,
                               useProxy
-                            })
+                            }
+                            if (simpleMode) setImportItem(item)
+                            else await addProfileItem(item)
                           } catch (e) {
                             toast.error(String(e))
                           } finally {
@@ -542,7 +588,9 @@ const Profiles: React.FC = () => {
                           if (files?.length) {
                             const content = await readTextFile(files[0])
                             const fileName = files[0].split('/').pop()?.split('\\').pop()
-                            await addProfileItem({ name: fileName, type: 'local', file: content })
+                            const item = { name: fileName, type: 'local' as const, file: content }
+                            if (simpleMode) setImportItem(item)
+                            else await addProfileItem(item)
                           }
                         } catch (e) {
                           toast.error(String(e))
@@ -554,7 +602,14 @@ const Profiles: React.FC = () => {
                           file: 'proxies: []\nproxy-groups: []\nrules: []'
                         })
                       } else if (key === 'import') {
-                        setOpenInfoImport(true)
+                        setImportItem({
+                          id: '',
+                          name: '',
+                          type: 'remote',
+                          url: '',
+                          override: [],
+                          useProxy
+                        })
                       }
                     }}
                   >

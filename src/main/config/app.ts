@@ -10,6 +10,7 @@ import {
   setGlobalMaxLogFileSizeMB
 } from '../utils/logFile'
 import { setAppLogDisabled } from '../utils/logger'
+import { normalizeYamlMaxAliasCount } from '../../shared/appConfig'
 
 let appConfig: IAppConfig // config.yaml
 const appConfigWriteQueue = new WriteQueue()
@@ -41,6 +42,7 @@ export async function getAppConfig(force = false): Promise<IAppConfig> {
         mergedConfig.operationMode = 'standard'
       }
       mergedConfig.maxLogFileSize = normalizeMaxLogFileSizeMB(mergedConfig.maxLogFileSize)
+      mergedConfig.yamlMaxAliasCount = normalizeYamlMaxAliasCount(mergedConfig.yamlMaxAliasCount)
       if (JSON.stringify(mergedConfig) !== JSON.stringify(parsedConfig)) {
         await atomicWriteFile(appConfigPath(), stringify(mergedConfig))
       }
@@ -77,6 +79,7 @@ async function writeAppConfig(
       nextConfig.nameserverPolicy = patch.nameserverPolicy ?? {}
     }
     nextConfig.maxLogFileSize = normalizeMaxLogFileSizeMB(nextConfig.maxLogFileSize)
+    nextConfig.yamlMaxAliasCount = normalizeYamlMaxAliasCount(nextConfig.yamlMaxAliasCount)
     try {
       await atomicWriteFile(appConfigPath(), stringify(nextConfig))
     } catch (error) {

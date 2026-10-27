@@ -2,6 +2,7 @@ import path from 'path'
 import axios from 'axios'
 import { app, dialog } from 'electron'
 import { parse, stringify } from '../utils/yaml'
+import { getAppConfig } from '../config/app'
 import { atomicWriteFile } from '../utils/safeFile'
 import { deepMerge } from '../utils/merge'
 import {
@@ -29,7 +30,11 @@ import {
 import { compileSimpleConfig, type SimpleSharedConfig } from './compiler'
 import { patchSimpleDraft } from './patch'
 import { normalizeSimpleProviderOptions } from './providers'
-import { replaceSimpleSource, resolveSimpleDraft } from './subscriptions'
+import {
+  attachSimpleSourceToGroups,
+  replaceSimpleSource,
+  resolveSimpleDraft
+} from './subscriptions'
 import {
   addSimpleNodes,
   readSimpleNodes,
@@ -198,7 +203,8 @@ function extractProxies(value: unknown): Record<string, unknown>[] {
 async function fetchSubscriptionProxies(url: string): Promise<Record<string, unknown>[]> {
   if (!/^https?:$/i.test(new URL(url).protocol)) throw new Error('订阅地址必须使用 http(s)')
   const response = await axios.get<string>(url, { responseType: 'text', timeout: 30000 })
-  const proxies = extractProxies(parse(response.data))
+  const { yamlMaxAliasCount } = await getAppConfig()
+  const proxies = extractProxies(parse(response.data, { maxAliasCount: yamlMaxAliasCount }))
   if (proxies.length === 0) throw new Error('订阅中没有找到 proxies 节点')
   return proxies
 }
@@ -691,7 +697,10 @@ export async function configureSimpleSubscription(
       const oldResolved = old
         ? (await resolveSimpleDraft({ ...draft, sources: [old] })).sources[0]
         : undefined
-      return replaceSimpleSource(draft, oldResolved, nextSource)
+      const next = replaceSimpleSource(draft, oldResolved, nextSource)
+      return options?.targetGroups?.length
+        ? attachSimpleSourceToGroups(next, nextSource, options.targetGroups)
+        : next
     }
     const result = await commitSimpleState(state, {
       ...state,
@@ -699,6 +708,29 @@ export async function configureSimpleSubscription(
       inheritedProfileIds: [...new Set([...(state.inheritedProfileIds || []), profileId])],
       draft: await update(state.draft),
       published: await update(state.published)
+    })
+    if (result.errors.length) throw new Error(result.errors.join('\n'))
+  })
+}
+
+export async function attachSimpleSubscriptionGroups(
+  profileId: string,
+  targetGroups: string[]
+): Promise<void> {
+  await simpleWriteQueue.run(async () => {
+    const state = await getSimpleState()
+    const source =
+      state.draft.sources.find((item) => item.profileId === profileId) ||
+      state.published.sources.find((item) => item.profileId === profileId)
+    if (!source) throw new Error('找不到订阅来源')
+    const resolved = (await resolveSimpleDraft({ ...state.draft, sources: [source] })).sources[0]
+    const attach = (draft: SimpleDraft): SimpleDraft =>
+      attachSimpleSourceToGroups(draft, resolved, targetGroups)
+    const result = await commitSimpleState(state, {
+      ...state,
+      revision: state.revision + 1,
+      draft: attach(state.draft),
+      published: attach(state.published)
     })
     if (result.errors.length) throw new Error(result.errors.join('\n'))
   })
@@ -733,7 +765,10 @@ export async function importSimpleSubscription(input: {
         content = response.data
       }
     }
-    const proxies = content ? extractProxies(parse(content)) : []
+    const { yamlMaxAliasCount } = await getAppConfig()
+    const proxies = content
+      ? extractProxies(parse(content, { maxAliasCount: yamlMaxAliasCount }))
+      : []
     if (input.mode !== 'http' && proxies.length === 0)
       throw new Error('订阅中没有找到 proxies 节点；完整订阅请使用 HTTP Provider')
     const source: SimpleSource = {

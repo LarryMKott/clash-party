@@ -1,5 +1,6 @@
 import type { SimpleDraft, SimpleObject, SimpleSource } from '../../shared/simple-config'
 import { parse, stringify } from '../utils/yaml'
+import { readSimpleGroups } from './groups'
 
 export interface SimpleProfileSnapshot {
   item: IProfileItem
@@ -111,4 +112,30 @@ export function replaceSimpleSource(
     sources,
     modules: { ...draft.modules, 'proxy-groups': stringify(groups) }
   }
+}
+
+export function attachSimpleSourceToGroups(
+  draft: SimpleDraft,
+  source: SimpleSource,
+  targetGroups: string[]
+): SimpleDraft {
+  const groups = readSimpleGroups(draft)
+  const selected = new Set(targetGroups)
+  const missing = targetGroups.filter((name) => !groups.some((group) => group.name === name))
+  if (missing.length) throw new Error(`代理组不存在: ${missing.join('、')}`)
+  const entries =
+    source.mode === 'extract'
+      ? source.proxies.map((node) => `${source.prefix}${node.name}`)
+      : [source.name]
+  for (const group of groups) {
+    if (!selected.has(String(group.name))) continue
+    if (source.mode === 'extract') {
+      group.proxies = [
+        ...new Set([...(Array.isArray(group.proxies) ? group.proxies : []), ...entries])
+      ]
+    } else {
+      group.use = [...new Set([...(Array.isArray(group.use) ? group.use : []), ...entries])]
+    }
+  }
+  return { ...draft, modules: { ...draft.modules, 'proxy-groups': stringify(groups) } }
 }

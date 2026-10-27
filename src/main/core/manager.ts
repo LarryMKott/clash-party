@@ -500,10 +500,10 @@ async function prepareCore(detached: boolean, skipStop = false): Promise<CoreCon
 
   const [appConfig, mihomoConfig] = await Promise.all([getAppConfig(), getControledMihomoConfig()])
 
-  let {
+  let { diffWorkDir = false } = appConfig
+  const {
     core = 'mihomo',
     autoSetDNS = true,
-    diffWorkDir = false,
     mihomoCpuPriority = 'PRIORITY_NORMAL',
     coreStartupMode = 'log',
     testProfileOnStart = true

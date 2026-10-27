@@ -112,7 +112,7 @@ const ModeSelection: React.FC<{ onSelect: (mode: 'standard' | 'simple') => Promi
                   </Button>
                 ))}
               </div>
-              <p className="border-t border-default-200 pt-4 text-small leading-relaxed text-pretty text-default-500 wrap-break-word">
+              <p className="border-t border-default-200 pt-4 text-small leading-relaxed text-pretty text-warning-600 wrap-break-word">
                 {t('settings.operationMode.select.note')}
               </p>
             </ModalBody>

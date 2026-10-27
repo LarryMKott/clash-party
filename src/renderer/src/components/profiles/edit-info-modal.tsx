@@ -29,6 +29,7 @@ import {
   addProfileUpdater,
   getFilePath,
   readTextFile,
+  getProfileImportInfo,
   getSimpleConfig,
   previewSimpleConfig,
   addProfileItem as importProfile,
@@ -48,12 +49,22 @@ interface Props {
   mode?: 'edit' | 'import'
   updateProfileItem?: (item: IProfileItem) => Promise<void>
   addProfileItem?: (item: Partial<IProfileItem>) => Promise<void>
+  simpleModeOverride?: boolean
+  onImported?: (item: IProfileItem) => void
   onClose: () => void
 }
 const EditInfoModal: React.FC<Props> = (props) => {
-  const { item, mode = 'edit', updateProfileItem, addProfileItem, onClose } = props
+  const {
+    item,
+    mode = 'edit',
+    updateProfileItem,
+    addProfileItem,
+    simpleModeOverride,
+    onImported,
+    onClose
+  } = props
   const { appConfig } = useAppConfig()
-  const simpleMode = appConfig?.operationMode === 'simple'
+  const simpleMode = simpleModeOverride ?? appConfig?.operationMode === 'simple'
   const { mutateProfileConfig } = useProfileConfig()
   const { mutate } = useSWRConfig()
   const [simpleOptions, setSimpleOptions] = useState<SimpleSubscriptionOptions>({
@@ -73,6 +84,60 @@ const EditInfoModal: React.FC<Props> = (props) => {
     : 'w-[400px] md:w-[400px] lg:w-[600px] xl:w-[800px]'
   const { t } = useTranslation()
   const isImportMode = mode === 'import'
+  useEffect(() => {
+    const url = values.url?.trim()
+    if (!isImportMode || values.type !== 'remote' || !url || !/^https?:\/\//i.test(url)) return
+    let active = true
+    const timer = setTimeout(() => {
+      getProfileImportInfo({
+        url,
+        useProxy: values.useProxy,
+        userAgent: values.userAgent,
+        authToken: values.authToken,
+        substore: values.substore,
+        allowFixedInterval: values.allowFixedInterval,
+        updateTimeout: values.updateTimeout
+      })
+        .then((info) => {
+          if (!active) return
+          setValues((current) => {
+            if (current.url?.trim() !== url) return current
+            const next = { ...current }
+            if (
+              info.name &&
+              info.name !== 'Remote File' &&
+              (!next.name || next.name === 'Remote File')
+            )
+              next.name = info.name
+            if (info.home && !next.customHome && /^https?:\/\//i.test(info.home))
+              next.customHome = info.home
+            if (info.interval && !next.interval) {
+              next.interval = info.interval
+              next.autoUpdate = true
+            }
+            if (info.extra && !next.extra) next.extra = info.extra
+            return next
+          })
+        })
+        .catch(() => {
+          // HEAD metadata is optional; the subscription can still be imported manually.
+        })
+    }, 300)
+    return () => {
+      active = false
+      clearTimeout(timer)
+    }
+  }, [
+    isImportMode,
+    values.type,
+    values.url,
+    values.useProxy,
+    values.userAgent,
+    values.authToken,
+    values.substore,
+    values.allowFixedInterval,
+    values.updateTimeout
+  ])
   useEffect(() => {
     if (!simpleMode || isImportMode) return
     let active = true
@@ -129,7 +194,10 @@ const EditInfoModal: React.FC<Props> = (props) => {
       active = false
     }
   }, [simpleMode])
+  const customHome = values.customHome?.trim() || ''
+  const validHome = !customHome || (/^https?:\/\//i.test(customHome) && URL.canParse(customHome))
   const canSave =
+    validHome &&
     (!simpleMode || isImportMode || optionsLoaded) &&
     (!isImportMode ||
       (values.type === 'remote' ? Boolean(values.url?.trim()) : values.file != null))
@@ -162,8 +230,10 @@ const EditInfoModal: React.FC<Props> = (props) => {
         if (Object.keys(header).length) providerOptions.header = header
         else delete providerOptions.header
         const options = { ...simpleOptions, providerOptions }
-        if (isImportMode) await importProfile(updatedItem, options)
-        else {
+        if (isImportMode) {
+          const imported = await importProfile(updatedItem, options)
+          onImported?.(imported)
+        } else {
           await saveProfile(updatedItem, options)
           await addProfileUpdater(updatedItem)
         }
@@ -230,6 +300,19 @@ const EditInfoModal: React.FC<Props> = (props) => {
           onValueChange={(v) => {
             setValues({ ...values, name: v })
           }}
+        />
+      </SettingItem>
+      <SettingItem title={t('profiles.editInfo.customHome')}>
+        <Input
+          size="sm"
+          type="url"
+          aria-label={t('profiles.editInfo.customHome')}
+          className={cn(inputWidth)}
+          value={values.customHome || ''}
+          isInvalid={!validHome}
+          errorMessage={t('profiles.editInfo.invalidHome')}
+          placeholder={values.home || t('profiles.editInfo.homePlaceholder')}
+          onValueChange={(customHome) => setValues({ ...values, customHome })}
         />
       </SettingItem>
       {simpleMode && (

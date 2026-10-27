@@ -82,11 +82,23 @@ interface IpcApi {
   getCurrentProfileItem: () => Promise<IProfileItem>
   getProfileItem: (id: string | undefined) => Promise<IProfileItem>
   getProfileStr: (id: string) => Promise<string>
+  getProfileImportInfo: (
+    item: Pick<
+      IProfileItem,
+      | 'url'
+      | 'useProxy'
+      | 'userAgent'
+      | 'authToken'
+      | 'substore'
+      | 'allowFixedInterval'
+      | 'updateTimeout'
+    >
+  ) => Promise<Partial<IProfileItem>>
   setProfileStr: (id: string, str: string) => Promise<void>
   addProfileItem: (
     item: Partial<IProfileItem>,
     simpleOptions?: import('../../../shared/simple-config').SimpleSubscriptionOptions
-  ) => Promise<void>
+  ) => Promise<IProfileItem>
   removeProfileItem: (id: string) => Promise<void>
   updateProfileItem: (
     item: IProfileItem,
@@ -177,6 +189,7 @@ interface IpcApi {
   refreshSimpleSource: (
     id: string
   ) => Promise<import('../../../shared/simple-config').SimplePreview>
+  attachSimpleSubscriptionGroups: (profileId: string, groups: string[]) => Promise<void>
   removeSimpleSource: (id: string) => Promise<import('../../../shared/simple-config').SimplePreview>
   setOperationMode: (mode: 'standard' | 'simple') => Promise<void>
   getFilePath: (ext: string[], title?: string, filterName?: string) => Promise<string[] | undefined>
@@ -342,6 +355,7 @@ export const {
   getCurrentProfileItem,
   getProfileItem,
   getProfileStr,
+  getProfileImportInfo,
   setProfileStr,
   addProfileItem,
   removeProfileItem,
@@ -386,6 +400,7 @@ export const {
   importSimpleSubscription,
   refreshSimpleSource,
   removeSimpleSource,
+  attachSimpleSubscriptionGroups,
   setOperationMode,
   getFilePath,
   readTextFile,

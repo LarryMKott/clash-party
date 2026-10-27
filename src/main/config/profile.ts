@@ -189,17 +189,30 @@ export async function changeCurrentProfile(id: string): Promise<void> {
   }
 }
 
+function normalizeCustomHome(value?: string): string | undefined {
+  const home = value?.trim()
+  if (!home) return undefined
+  try {
+    const { protocol } = new URL(home)
+    if (protocol === 'http:' || protocol === 'https:') return home
+  } catch {
+    // Report invalid URLs with the same message as unsupported protocols.
+  }
+  throw new Error(i18next.t('profiles.editInfo.invalidHome'))
+}
+
 export async function updateProfileItem(
   item: IProfileItem,
   simpleOptions?: SimpleSubscriptionOptions
 ): Promise<void> {
+  const customHome = normalizeCustomHome(item.customHome)
   const previous = simpleOptions ? await getProfileItem(item.id) : undefined
   await updateProfileConfig((config) => {
     const index = config.items.findIndex((i) => i.id === item.id)
     if (index === -1) {
       throw new Error('Profile not found')
     }
-    config.items[index] = item
+    config.items[index] = { ...item, customHome }
     return config
   })
   if (simpleOptions && (await getAppConfig()).operationMode === 'simple') {
@@ -262,9 +275,9 @@ async function recordProfileUpdateFailure(id: string, name: string, error: unkno
 export async function addProfileItem(
   item: Partial<IProfileItem>,
   simpleOptions?: SimpleSubscriptionOptions
-): Promise<void> {
+): Promise<IProfileItem> {
   try {
-    await addProfileItemInner(item, simpleOptions)
+    return await addProfileItemInner(item, simpleOptions)
   } catch (error) {
     // 新建订阅时还没有 id，只有「更新已有订阅」才需要留痕
     if (item.id) await recordProfileUpdateFailure(item.id, item.name || item.id, error)
@@ -275,7 +288,7 @@ export async function addProfileItem(
 async function addProfileItemInner(
   item: Partial<IProfileItem>,
   simpleOptions?: SimpleSubscriptionOptions
-): Promise<void> {
+): Promise<IProfileItem> {
   const newItem = await createProfile(item)
   let shouldChangeCurrent = false
   let newProfileIsCurrentAfterUpdate = false
@@ -297,7 +310,7 @@ async function addProfileItemInner(
     const { configureSimpleSubscription } = await import('../simple/service')
     await addProfileUpdater(newItem)
     await configureSimpleSubscription(newItem.id, simpleOptions)
-    return
+    return newItem
   }
 
   // If the new profile will become the current profile, ensure generateProfile is called
@@ -317,6 +330,7 @@ async function addProfileItemInner(
     await changeCurrentProfile(newItem.id)
   }
   await addProfileUpdater(newItem)
+  return newItem
 }
 
 export async function removeProfileItem(id: string): Promise<void> {
@@ -417,6 +431,7 @@ interface FetchOptions {
   authToken?: string
   timeout: number
   substore: boolean
+  maxAliasCount?: number
 }
 
 interface FetchResult {
@@ -451,6 +466,18 @@ function normalizeAxiosHeaders(headers: AxiosResponse['headers']): Record<string
   return normalized
 }
 
+function profileNameFromUrl(url: string): string | undefined {
+  try {
+    const pathname = new URL(url).pathname.replace(/\/+$/, '')
+    const segment = pathname.split('/').pop()
+    if (!segment) return undefined
+    const name = decodeURIComponent(segment).replace(/\.(ya?ml|json)$/i, '')
+    return name || undefined
+  } catch {
+    return undefined
+  }
+}
+
 function parsedProfileSummary(parsed: Record<string, unknown>): string {
   const topKeys = Object.keys(parsed).slice(0, 20)
   const proxies = parsed['proxies']
@@ -471,7 +498,8 @@ function parsedProfileSummary(parsed: Record<string, unknown>): string {
 }
 
 async function fetchAndValidateSubscription(options: FetchOptions): Promise<FetchResult> {
-  const { url, useProxy, mixedPort, userAgent, authToken, timeout, substore } = options
+  const { url, useProxy, mixedPort, userAgent, authToken, timeout, substore, maxAliasCount } =
+    options
   const redactedUrl = redactSubscriptionUrl(url)
   const fetchMode = substore ? 'substore' : useProxy ? 'proxy' : 'direct'
 
@@ -541,8 +569,8 @@ async function fetchAndValidateSubscription(options: FetchOptions): Promise<Fetc
   }
 
   const decryptedData = await decryptAgeContent(data, options.ageSecretKey, 'subscription')
-  const parsed = parse(decryptedData) as Record<string, unknown> | null
-  if (typeof parsed !== 'object' || parsed === null) {
+  const parsed = parse(decryptedData, { maxAliasCount }) as Record<string, unknown> | null
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
     await profileLogger.warn(
       `Remote profile parse failed url=${redactedUrl} mode=${fetchMode} parsedType=${typeof parsed}`
     )
@@ -551,13 +579,14 @@ async function fetchAndValidateSubscription(options: FetchOptions): Promise<Fetc
   await profileLogger.info(
     `Remote profile parsed url=${redactedUrl} mode=${fetchMode} summary=${parsedProfileSummary(parsed)}`
   )
-  if (!parsed['proxies'] && !parsed['proxy-providers']) {
+  const hasProxyGroups = Array.isArray(parsed['proxy-groups']) && parsed['proxy-groups'].length > 0
+  if (!parsed['proxies'] && !parsed['proxy-providers'] && !hasProxyGroups) {
     await profileLogger.warn(
-      `Remote profile validation failed url=${redactedUrl} mode=${fetchMode} reason=missing-proxies-or-providers summary=${parsedProfileSummary(
+      `Remote profile validation failed url=${redactedUrl} mode=${fetchMode} reason=missing-proxies-providers-or-groups summary=${parsedProfileSummary(
         parsed
       )}`
     )
-    throw new Error('Subscription failed: Profile missing proxies or providers')
+    throw new Error('Subscription failed: Profile missing proxies, providers or proxy groups')
   }
 
   return { data, headers: responseHeaders }
@@ -570,6 +599,9 @@ export async function createProfile(item: Partial<IProfileItem>): Promise<IProfi
     name: item.name || (item.type === 'remote' ? 'Remote File' : 'Local File'),
     type: item.type || 'local',
     url: item.url,
+    home: item.home,
+    extra: item.extra,
+    customHome: normalizeCustomHome(item.customHome),
     substore: item.substore || false,
     interval: item.interval || 0,
     override: item.override || [],
@@ -608,7 +640,7 @@ export async function createProfile(item: Partial<IProfileItem>): Promise<IProfi
   }
 
   const promise = (async (): Promise<IProfileItem> => {
-    const { userAgent, subscriptionTimeout = 30000 } = await getAppConfig()
+    const { userAgent, subscriptionTimeout = 30000, yamlMaxAliasCount } = await getAppConfig()
     const { 'mixed-port': mixedPort = DEFAULT_MIHOMO_PORTS.mixed } =
       await getControledMihomoConfig()
     const userItemTimeoutMs =
@@ -622,7 +654,8 @@ export async function createProfile(item: Partial<IProfileItem>): Promise<IProfi
       userAgent: item.userAgent || userAgent || `mihomo.party/v${app.getVersion()} (clash.meta)`,
       ageSecretKey: newItem.ageSecretKey,
       authToken: item.authToken,
-      substore: newItem.substore || false
+      substore: newItem.substore || false,
+      maxAliasCount: yamlMaxAliasCount
     }
 
     const fetchSub = (useProxy: boolean, timeout: number): Promise<FetchResult> =>
@@ -684,6 +717,139 @@ export async function createProfile(item: Partial<IProfileItem>): Promise<IProfi
   } finally {
     inflightRemoteFetches.delete(dedupKey)
   }
+}
+
+export async function getProfileImportInfo(
+  item: Pick<
+    IProfileItem,
+    | 'url'
+    | 'useProxy'
+    | 'userAgent'
+    | 'authToken'
+    | 'substore'
+    | 'allowFixedInterval'
+    | 'updateTimeout'
+  >
+): Promise<Partial<IProfileItem>> {
+  if (!item.url) return {}
+  const fallbackName = profileNameFromUrl(item.url)
+  let userAgent: string | undefined
+  let subscriptionTimeout = 30000
+  try {
+    const appConfig = await getAppConfig()
+    userAgent = appConfig.userAgent
+    subscriptionTimeout = appConfig.subscriptionTimeout ?? subscriptionTimeout
+  } catch {
+    // The metadata probe can run before the core configuration is ready.
+  }
+  let mixedPort: number = DEFAULT_MIHOMO_PORTS.mixed
+  try {
+    mixedPort = (await getControledMihomoConfig())['mixed-port'] ?? mixedPort
+  } catch {
+    // Fall back to a direct request when the controlled config is unavailable.
+  }
+  const headers: Record<string, string> = {
+    'User-Agent': item.userAgent || userAgent || `mihomo.party/v${app.getVersion()} (clash.meta)`,
+    'Accept-Encoding': 'identity'
+  }
+  if (item.authToken) headers.Authorization = item.authToken
+  let requestUrl = item.url
+  let proxy:
+    | {
+        protocol: 'http'
+        host: string
+        port: number
+      }
+    | false = false
+  if (item.substore) {
+    const url = new URL(`http://127.0.0.1:${subStorePort}${item.url}`)
+    url.searchParams.set('target', 'ClashMeta')
+    url.searchParams.set('noCache', 'true')
+    if (item.useProxy && mixedPort !== 0)
+      url.searchParams.set('proxy', `http://127.0.0.1:${mixedPort}`)
+    requestUrl = url.toString()
+  } else if (item.useProxy && mixedPort !== 0) {
+    proxy = { protocol: 'http', host: '127.0.0.1', port: mixedPort }
+  }
+  const timeout =
+    typeof item.updateTimeout === 'number' && item.updateTimeout > 0
+      ? item.updateTimeout * 1000
+      : subscriptionTimeout
+  const request = (requestProxy: typeof proxy) =>
+    axios.head(requestUrl, {
+      headers,
+      timeout,
+      proxy: requestProxy,
+      validateStatus: () => true
+    })
+  let response: AxiosResponse
+  let responseProxy = proxy
+  try {
+    response = await request(proxy)
+  } catch {
+    if (!proxy && !item.substore && mixedPort !== 0) {
+      try {
+        responseProxy = { protocol: 'http', host: '127.0.0.1', port: mixedPort }
+        response = await request(responseProxy)
+      } catch {
+        return fallbackName ? { name: fallbackName } : {}
+      }
+    } else {
+      return fallbackName ? { name: fallbackName } : {}
+    }
+  }
+  if (
+    (response.status < 200 || response.status >= 300) &&
+    !proxy &&
+    !item.substore &&
+    mixedPort !== 0
+  ) {
+    try {
+      responseProxy = { protocol: 'http', host: '127.0.0.1', port: mixedPort }
+      response = await request(responseProxy)
+    } catch {
+      // Keep the direct response and use the URL fallback below.
+    }
+  }
+  let responseHeaders =
+    response.status >= 200 && response.status < 300 ? normalizeAxiosHeaders(response.headers) : {}
+  const metadataHeaders = [
+    'content-disposition',
+    'profile-web-page-url',
+    'profile-update-interval',
+    'subscription-userinfo'
+  ]
+  if (!metadataHeaders.some((name) => responseHeaders[name])) {
+    try {
+      const fallback = await axios.get(requestUrl, {
+        headers,
+        timeout,
+        proxy: responseProxy,
+        responseType: 'stream',
+        validateStatus: () => true
+      })
+      responseHeaders = normalizeAxiosHeaders(fallback.headers)
+      const stream = fallback.data as { destroy?: () => void }
+      stream?.destroy?.()
+    } catch {
+      // A metadata probe must not block importing the subscription.
+    }
+  }
+  const result: Partial<IProfileItem> = fallbackName ? { name: fallbackName } : {}
+  if (responseHeaders['content-disposition']) {
+    const name = parseFilename(responseHeaders['content-disposition'])
+    if (name !== 'Remote File') result.name = name
+  }
+  if (!result.name) result.name = fallbackName
+  if (responseHeaders['profile-web-page-url']) result.home = responseHeaders['profile-web-page-url']
+  if (responseHeaders['profile-update-interval'] && !item.allowFixedInterval) {
+    const hours = Number(responseHeaders['profile-update-interval'])
+    if (Number.isFinite(hours) && hours > 0)
+      result.interval = Math.min(Math.ceil(hours * 60), MAX_PROFILE_INTERVAL_MINUTES)
+  }
+  if (responseHeaders['subscription-userinfo'])
+    result.extra = parseSubinfo(responseHeaders['subscription-userinfo'])
+  return result
 }
 
 // 候选校验：把新内容放进临时目录，生成带 override 的完整运行配置，再交核心 `-t` 校验。远程订阅与插件订阅
@@ -824,7 +990,8 @@ export async function parseProfileContent(
   }
 
   try {
-    let result = parse(profile)
+    const { yamlMaxAliasCount } = await getAppConfig()
+    let result = parse(profile, { maxAliasCount: yamlMaxAliasCount })
     if (typeof result !== 'object') result = {}
     return result as IMihomoConfig
   } catch (e) {
