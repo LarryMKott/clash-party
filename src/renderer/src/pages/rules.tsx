@@ -27,6 +27,7 @@ import {
 import SortableGroup from '@renderer/components/proxies/sortable-group'
 import EditModeMenu from '@renderer/components/simple/edit-mode-menu'
 import RuleEditorModal from '@renderer/components/rules/rule-editor-modal'
+import RuleAuditPanel from '@renderer/components/rules/rule-audit-panel'
 import { getSimpleRulesEditor, saveSimpleRules } from '@renderer/utils/ipc'
 import { toast } from '@renderer/components/base/toast'
 import { parseSimpleRule } from '../../../shared/simple-rules'
@@ -250,6 +251,9 @@ const Rules: React.FC = () => {
         <div className="h-[calc(100vh-100px)] mt-px">
           <Virtuoso
             data={filteredRules}
+            components={{
+              Header: () => <RuleAuditPanel rules={rules?.rules || []} />
+            }}
             itemContent={(i, rule) => (
               <RuleItem
                 index={rule.index ?? i}
