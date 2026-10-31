@@ -14,14 +14,15 @@ import {
 } from '@heroui/react'
 import BasePage from '@renderer/components/base/base-page'
 import { useAppConfig } from '@renderer/hooks/use-app-config'
+import { useActiveProfile } from '@renderer/hooks/use-active-profile'
 import {
   getImageDataURL,
   mihomoChangeProxy,
   mihomoCloseAllConnections,
   mihomoProxyDelay,
-  getSimpleConfig,
-  reorderSimpleProxyGroups,
-  removeSimpleProxyGroup
+  getLocalConfig,
+  reorderLocalProxyGroups,
+  removeLocalProxyGroup
 } from '@renderer/utils/ipc'
 import { FaLocationCrosshairs } from 'react-icons/fa6'
 import { CgDetailsLess, CgDetailsMore } from 'react-icons/cg'
@@ -70,14 +71,14 @@ import {
   verticalListSortingStrategy
 } from '@dnd-kit/sortable'
 import GroupEditorModal from '@renderer/components/proxies/group-editor-modal'
-import DeleteResourceButton from '@renderer/components/simple/delete-resource-button'
+import DeleteResourceButton from '@renderer/components/local/delete-resource-button'
 import SortableGroup from '@renderer/components/proxies/sortable-group'
 import FlagRibbon from '@renderer/components/proxies/flag-ribbon'
 import DelayRace from '@renderer/components/proxies/delay-race'
 import ArcadeSettle, { type ArcadeSettleData } from '@renderer/components/proxies/arcade-settle'
 import { playHit, playMiss, playSettle, playSelect } from '@renderer/utils/arcade-audio'
 import { toast } from '@renderer/components/base/toast'
-import type { SimpleObject } from '../../../shared/simple-config'
+import type { LocalObject } from '../../../shared/local-config'
 
 const GROUP_EXPAND_STATE_KEY = 'proxy_group_expand_state'
 const EMPTY_GROUPS: IMihomoMixedGroup[] = []
@@ -195,9 +196,9 @@ const Proxies: React.FC = () => {
   const { mode = 'rule' } = controledMihomoConfig || {}
   const { groups: groupData, mutate, showHidden, setShowHidden } = useGroups()
   const { appConfig, patchAppConfig } = useAppConfig()
-  const simpleMode = appConfig?.operationMode === 'simple'
+  const { isLocalActive: localMode } = useActiveProfile()
   const [editMode, setEditMode] = useState(false)
-  const editing = simpleMode && editMode
+  const editing = localMode && editMode
   const [editingGroup, setEditingGroup] = useState<string>()
   const [creatingGroup, setCreatingGroup] = useState(false)
   const [savingOrder, setSavingOrder] = useState(false)
@@ -205,25 +206,25 @@ const Proxies: React.FC = () => {
   const dragging = useRef(false)
   const lastDragEnd = useRef(0)
   const {
-    data: simpleState,
-    error: simpleError,
-    mutate: mutateSimple
-  } = useSWR(editing ? 'getSimpleConfig' : null, getSimpleConfig)
+    data: localState,
+    error: localError,
+    mutate: mutateLocal
+  } = useSWR(editing ? 'getLocalConfig' : null, getLocalConfig)
   const { configuredGroups, groupConfigError } = useMemo(() => {
-    if (!simpleState) return { configuredGroups: [] }
+    if (!localState) return { configuredGroups: [] }
     try {
-      const parsed: unknown = parse(simpleState.draft.modules['proxy-groups'])
+      const parsed: unknown = parse(localState.draft.modules['proxy-groups'])
       if (
         !Array.isArray(parsed) ||
         parsed.some((group) => !group || typeof group.name !== 'string')
       ) {
         throw new Error('代理组配置必须是包含名称的对象列表')
       }
-      return { configuredGroups: parsed as SimpleObject[] }
+      return { configuredGroups: parsed as LocalObject[] }
     } catch (error) {
       return { configuredGroups: [], groupConfigError: String(error) }
     }
-  }, [simpleState])
+  }, [localState])
   const groups = useMemo(() => {
     if (!editing) return groupData ?? EMPTY_GROUPS
     const entries = configuredGroups.map((group): IMihomoMixedGroup => {
@@ -271,8 +272,8 @@ const Proxies: React.FC = () => {
     setGroupOrder(order)
     setSavingOrder(true)
     try {
-      await reorderSimpleProxyGroups(order)
-      await mutateSimple()
+      await reorderLocalProxyGroups(order)
+      await mutateLocal()
       await mutate()
     } catch (error) {
       toast.error(String(error))
@@ -282,12 +283,12 @@ const Proxies: React.FC = () => {
     }
   }
   useEffect(() => {
-    if (!simpleMode) {
+    if (!localMode) {
       setEditMode(false)
       setEditingGroup(undefined)
       setCreatingGroup(false)
     }
-  }, [simpleMode])
+  }, [localMode])
 
   // ─── 花活：3D 地球视图 / Smart 神经网络动画 ────────────────────────────────
   const [globeOpen, setGlobeOpen] = useState(false)
@@ -822,8 +823,8 @@ const Proxies: React.FC = () => {
                               (entry) => entry.name === groups[index].name
                             )
                             if (!group) throw new Error('代理组已变化，请刷新')
-                            await removeSimpleProxyGroup(groups[index].name, group)
-                            await mutateSimple()
+                            await removeLocalProxyGroup(groups[index].name, group)
+                            await mutateLocal()
                             await mutate()
                           }}
                         />
@@ -952,7 +953,7 @@ const Proxies: React.FC = () => {
       editing,
       openGroupEditor,
       configuredGroups,
-      mutateSimple,
+      mutateLocal,
       savingOrder,
       openNeural,
       openRace
@@ -1076,7 +1077,7 @@ const Proxies: React.FC = () => {
                 }
               }}
             >
-              {simpleMode ? (
+              {localMode ? (
                 <DropdownSection showDivider>
                   <DropdownItem
                     key="edit-groups"
@@ -1194,21 +1195,21 @@ const Proxies: React.FC = () => {
             setCreatingGroup(false)
           }}
           onSaved={() => {
-            void mutateSimple()
+            void mutateLocal()
             void mutate()
           }}
         />
       )}
       {editing ? (
         <>
-          {!simpleState && !simpleError && (
+          {!localState && !localError && (
             <div className="flex justify-center p-6">
               <Spinner aria-label="加载代理组" />
             </div>
           )}
-          {(simpleError || groupConfigError) && (
+          {(localError || groupConfigError) && (
             <div role="alert" className="p-3 text-danger text-sm">
-              {String(simpleError || groupConfigError)}
+              {String(localError || groupConfigError)}
             </div>
           )}
           <DndContext
@@ -1243,7 +1244,7 @@ const Proxies: React.FC = () => {
             <Card
               isPressable
               fullWidth
-              isDisabled={savingOrder || !simpleState || !!simpleError || !!groupConfigError}
+              isDisabled={savingOrder || !localState || !!localError || !!groupConfigError}
               onPress={() => setCreatingGroup(true)}
             >
               <CardBody className="flex h-14 flex-row items-center justify-center gap-2 text-foreground-500">
