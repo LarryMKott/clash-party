@@ -85,6 +85,13 @@ import {
 import { runPreflight } from '../core/preflight'
 import { checkQuota } from '../core/quotaGuard'
 import { getCurrentQuotaHistory } from '../core/quotaHistory'
+import {
+  createConfigSnapshot,
+  diffConfigSnapshot,
+  listConfigSnapshots,
+  removeConfigSnapshot,
+  restoreConfigSnapshot
+} from '../core/configHistory'
 import { triggerSysProxy } from '../sys/sysproxy'
 import { checkUpdate, downloadAndInstallUpdate } from '../resolve/autoUpdater'
 import {
@@ -275,6 +282,12 @@ const asyncHandlers: Record<string, AsyncFn> = {
   // 订阅额度：渲染层轮询只读状态，推送通知由主进程定时任务负责
   getQuotaStatus: () => checkQuota({ notify: false }),
   getQuotaHistory: () => getCurrentQuotaHistory(7),
+  // 本地配置快照：列表 / 手动新建 / 差异 / 回滚 / 删除
+  configHistoryList: () => listConfigSnapshots(),
+  configHistoryCreate: () => createConfigSnapshot('manual'),
+  configHistoryDiff: (id: string) => diffConfigSnapshot(id),
+  configHistoryRestore: (id: string) => restoreConfigSnapshot(id),
+  configHistoryRemove: (id: string) => removeConfigSnapshot(id),
   mihomoCloseConnection,
   mihomoCloseAllConnections,
   mihomoRules,

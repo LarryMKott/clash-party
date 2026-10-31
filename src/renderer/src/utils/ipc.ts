@@ -9,6 +9,7 @@ import type {
 import type { PreflightReport } from '../../../shared/preflight'
 import type { IQuotaStatus } from '../../../shared/quota'
 import type { IQuotaHistorySummary } from '../../../shared/quota-history'
+import type { IConfigSnapshotDiff, IConfigSnapshotMeta } from '../../../shared/config-history'
 
 function checkIpcError<T>(response: unknown): T {
   if (response && typeof response === 'object' && 'invokeError' in response) {
@@ -32,6 +33,11 @@ interface IpcApi {
   getSafeModeState: () => Promise<boolean>
   getQuotaStatus: () => Promise<IQuotaStatus>
   getQuotaHistory: () => Promise<IQuotaHistorySummary>
+  configHistoryList: () => Promise<IConfigSnapshotMeta[]>
+  configHistoryCreate: () => Promise<IConfigSnapshotMeta | null>
+  configHistoryDiff: (id: string) => Promise<IConfigSnapshotDiff[]>
+  configHistoryRestore: (id: string) => Promise<void>
+  configHistoryRemove: (id: string) => Promise<void>
   mihomoCloseConnection: (id: string) => Promise<void>
   mihomoCloseAllConnections: (group?: string) => Promise<void>
   mihomoRules: () => Promise<IMihomoRulesInfo>
@@ -295,6 +301,11 @@ export const {
   getSafeModeState,
   getQuotaStatus,
   getQuotaHistory,
+  configHistoryList,
+  configHistoryCreate,
+  configHistoryDiff,
+  configHistoryRestore,
+  configHistoryRemove,
   mihomoCloseConnection,
   mihomoCloseAllConnections,
   mihomoRules,

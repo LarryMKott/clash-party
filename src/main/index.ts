@@ -22,6 +22,7 @@ import { init, initBasic, safeShowErrorBox, startSubStoreServices } from './util
 import { initShortcut } from './resolve/shortcut'
 import { initProfileUpdater } from './core/profileUpdater'
 import { initQuotaGuard } from './core/quotaGuard'
+import { initConfigHistory } from './core/configHistory'
 import { startMonitor } from './resolve/trafficMonitor'
 import { showFloatingWindow } from './resolve/floatingWindow'
 import { logger, createLogger } from './utils/logger'
@@ -348,6 +349,7 @@ app
                 mainLogger.warn('Failed to init profile updater', e)
               ),
               initQuotaGuard().catch((e) => mainLogger.warn('Failed to init quota guard', e)),
+              initConfigHistory().catch((e) => mainLogger.warn('Failed to init config history', e)),
               initWebdavBackupScheduler().catch((e) =>
                 mainLogger.warn('Failed to init webdav backup scheduler', e)
               ),

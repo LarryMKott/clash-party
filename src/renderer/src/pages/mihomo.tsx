@@ -50,6 +50,7 @@ import {
 import React, { useState, useEffect } from 'react'
 import InterfaceModal from '@renderer/components/mihomo/interface-modal'
 import PreflightModal from '@renderer/components/mihomo/preflight-modal'
+import ConfigHistoryModal from '@renderer/components/mihomo/config-history-modal'
 import { MdDeleteForever, MdOpenInNew } from 'react-icons/md'
 import { useTranslation } from 'react-i18next'
 import {
@@ -174,6 +175,7 @@ const Mihomo: React.FC = () => {
   const [upgrading, setUpgrading] = useState(false)
   const [lanOpen, setLanOpen] = useState(false)
   const [preflightOpen, setPreflightOpen] = useState(false)
+  const [configHistoryOpen, setConfigHistoryOpen] = useState(false)
   const [safeMode, setSafeMode] = useState(false)
 
   const refreshSafeMode = (): void => {
@@ -382,6 +384,13 @@ const Mihomo: React.FC = () => {
   return (
     <>
       {lanOpen && <InterfaceModal onClose={() => setLanOpen(false)} />}
+      {configHistoryOpen && (
+        <ConfigHistoryModal
+          onClose={() => {
+            setConfigHistoryOpen(false)
+          }}
+        />
+      )}
       {preflightOpen && (
         <PreflightModal
           onClose={() => {
