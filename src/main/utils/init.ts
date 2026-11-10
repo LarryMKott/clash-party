@@ -531,8 +531,15 @@ export async function init(): Promise<void> {
       try {
         if (sysProxy.enable) {
           await startPacServer()
+          await triggerSysProxy(true)
+        } else if (process.platform !== 'darwin') {
+          // 崩溃/强杀会在系统里留下指向死端口的代理残留，开机后直接断网；
+          // 清理不应等网络就绪（isOnline 门控），立即强制执行（#445、#422）
+          await triggerSysProxy(false, { force: true })
+        } else {
+          // macOS 关闭代理走 helper，离线强清可能唤醒提权修复弹窗，维持原路径
+          await triggerSysProxy(false)
         }
-        await triggerSysProxy(sysProxy.enable)
       } catch {
         // ignore
       }
