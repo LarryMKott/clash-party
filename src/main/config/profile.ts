@@ -144,6 +144,24 @@ export async function updateProfileConfig(
   }, signal)
 }
 
+// 拖拽排序只表达"条目顺序"这一件事：在写队列内读最新配置后仅重排 items，
+// 不整份替换，避免渲染层快照把后台并发写入的字段一并回退（#1397）
+export async function reorderProfileItems(order: string[]): Promise<void> {
+  await updateProfileConfig((config) => {
+    const positions = new Map(order.map((id, index) => [id, index]))
+    config.items.sort((a, b) => {
+      const pa = positions.get(a.id)
+      const pb = positions.get(b.id)
+      // 不在 order 里的条目（排序期间新增）保持相对顺序排在末尾
+      if (pa === undefined && pb === undefined) return 0
+      if (pa === undefined) return 1
+      if (pb === undefined) return -1
+      return pa - pb
+    })
+    return config
+  })
+}
+
 export async function getProfileItem(id: string | undefined): Promise<IProfileItem | undefined> {
   const { items } = await getProfileConfig()
   if (!id || id === 'default')
@@ -253,7 +271,18 @@ export async function updateProfileItem(
     if (index === -1) {
       throw new Error('Profile not found')
     }
-    config.items[index] = { ...item, customHome }
+    // home/extra/updated/lastUpdateError 是更新流程的结果字段，以磁盘最新值为准，
+    // 避免编辑弹窗打开期间的并发刷新结果被弹窗旧快照抹掉（#1397）
+    const fresh = config.items[index]
+    config.items[index] = {
+      ...item,
+      customHome,
+      home: fresh.home,
+      extra: fresh.extra,
+      updated: fresh.updated,
+      lastUpdateError: fresh.lastUpdateError,
+      lastUpdateErrorAt: fresh.lastUpdateErrorAt
+    }
     return config
   })
   if (sourceOptions) {
@@ -343,7 +372,22 @@ async function addProfileItemInner(
   await updateProfileConfig((config) => {
     const existingIndex = config.items.findIndex((i) => i.id === newItem.id)
     if (existingIndex !== -1) {
-      config.items[existingIndex] = newItem
+      // 抓取流程只通过响应头改写 name/home/interval，且 extra/updated 恒为新值；
+      // 其余字段一律以磁盘最新值为准。name/home/interval 与触发时快照不同
+      // 即为响应头驱动的新值，否则保留磁盘值，避免快照覆盖抓取期间的并发编辑（#1397）
+      const fresh = config.items[existingIndex]
+      const merged: IProfileItem = {
+        ...fresh,
+        updated: newItem.updated,
+        extra: newItem.extra,
+        name: newItem.name !== item.name ? newItem.name : fresh.name,
+        home: newItem.home !== item.home ? newItem.home : fresh.home,
+        interval: newItem.interval !== item.interval ? newItem.interval : fresh.interval
+      }
+      // 刷新成功即清除上次失败留痕
+      delete merged.lastUpdateError
+      delete merged.lastUpdateErrorAt
+      config.items[existingIndex] = merged
     } else {
       config.items.push(newItem)
     }

@@ -6,6 +6,7 @@ import {
   changeCurrentProfile as change,
   getProfileConfig,
   removeProfileItem as remove,
+  reorderProfileItems as reorder,
   setProfileConfig as set,
   updateProfileItem as update
 } from '@renderer/utils/ipc'
@@ -20,6 +21,7 @@ const { Provider, useConfig } = createConfigContext<IProfileConfig>({
 interface ProfileConfigContextType {
   profileConfig: IProfileConfig | undefined
   setProfileConfig: (config: IProfileConfig) => Promise<void>
+  reorderProfileItems: (order: string[]) => Promise<void>
   mutateProfileConfig: () => void
   addProfileItem: (item: Partial<IProfileItem>) => Promise<void>
   updateProfileItem: (item: IProfileItem) => Promise<void>
@@ -63,6 +65,12 @@ const ProfileConfigContextWrapper: React.FC<{ children: ReactNode }> = ({ childr
   const setProfileConfig = useCallback(
     (cfg: IProfileConfig) =>
       withErrorHandling(() => set(cfg), 'common.error.saveProfileConfigFailed')(),
+    [withErrorHandling]
+  )
+
+  const reorderProfileItems = useCallback(
+    (order: string[]) =>
+      withErrorHandling(() => reorder(order), 'common.error.saveProfileConfigFailed')(),
     [withErrorHandling]
   )
 
@@ -135,6 +143,7 @@ const ProfileConfigContextWrapper: React.FC<{ children: ReactNode }> = ({ childr
       value={{
         profileConfig: config,
         setProfileConfig,
+        reorderProfileItems,
         mutateProfileConfig: mutate,
         addProfileItem,
         removeProfileItem,

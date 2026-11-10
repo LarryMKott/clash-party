@@ -54,6 +54,7 @@ const validInvokeChannels = [
   // Profile
   'getProfileConfig',
   'setProfileConfig',
+  'reorderProfileItems',
   'getCurrentProfileItem',
   'getProfileItem',
   'getProfileStr',

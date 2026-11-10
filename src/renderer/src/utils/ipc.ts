@@ -85,6 +85,7 @@ interface IpcApi {
   // Profile
   getProfileConfig: (force?: boolean) => Promise<IProfileConfig>
   setProfileConfig: (config: IProfileConfig) => Promise<void>
+  reorderProfileItems: (order: string[]) => Promise<void>
   getCurrentProfileItem: () => Promise<IProfileItem>
   getProfileItem: (id: string | undefined) => Promise<IProfileItem>
   getProfileStr: (id: string) => Promise<string>
@@ -346,6 +347,7 @@ export const {
   // Profile
   getProfileConfig,
   setProfileConfig,
+  reorderProfileItems,
   getCurrentProfileItem,
   getProfileItem,
   getProfileStr,

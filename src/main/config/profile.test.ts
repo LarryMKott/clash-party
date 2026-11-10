@@ -12,6 +12,7 @@ import {
   getProfileConfig,
   getProfileItem,
   removeProfileItem,
+  reorderProfileItems,
   updateProfileConfig,
   updateProfileItem,
   upsertPluginProfile,
@@ -812,5 +813,92 @@ describe('remote profile update failure reporting', () => {
     expect(describeUpdateError(new Error('a\nb'))).toBe('a')
     expect(describeUpdateError('  \n done  ')).toBe('done')
     expect(describeUpdateError('')).toBe('Unknown error')
+  })
+})
+
+describe('concurrent-write safety (#1397)', () => {
+  it('reorderProfileItems 只重排条目顺序，不回退排序期间落盘的字段', async () => {
+    await updateProfileConfig((config) => {
+      config.items.push({
+        id: 'local-2',
+        type: 'local',
+        name: 'Second',
+        interval: 60,
+        updated: 1
+      } as IProfileItem)
+      return config
+    })
+
+    // 渲染层拿到快照后，后台又提交了一次字段更新；排序只提交 id 顺序
+    await updateProfileConfig((config) => {
+      const item = config.items.find((i) => i.id === 'remote')
+      if (item) {
+        item.updated = 999
+        item.extra = { upload: 1, download: 2, total: 3, expire: 4 }
+      }
+      return config
+    })
+
+    await reorderProfileItems(['local-2', 'remote'])
+    const { items } = await getProfileConfig(true)
+    expect(items.map((i) => i.id)).toEqual(['local-2', 'remote'])
+    const remote = items.find((i) => i.id === 'remote')
+    expect(remote?.updated).toBe(999)
+    expect(remote?.extra?.upload).toBe(1)
+  })
+
+  it('订阅刷新只合并 updated/extra，抓取期间的用户编辑不被触发时快照覆盖', async () => {
+    await updateProfileConfig((config) => {
+      const item = config.items.find((i) => i.id === 'remote')
+      if (item) {
+        item.interval = 120
+        item.name = '用户改过的名字'
+        item.lastUpdateError = 'boom'
+        item.lastUpdateErrorAt = 1
+      }
+      return config
+    })
+
+    // 定时任务抓取前读到的快照（interval 还是旧值）
+    const staleTriggerSnapshot = {
+      ...(await requireProfileItem('remote')),
+      url: 'https://example.test/sub'
+    }
+    // 抓取期间用户把 interval 改回 240
+    await updateProfileConfig((config) => {
+      const item = config.items.find((i) => i.id === 'remote')
+      if (item) item.interval = 240
+      return config
+    })
+
+    // 刷新完成，用触发时快照走正常更新路径
+    await addProfileItem(staleTriggerSnapshot)
+
+    const item = await requireProfileItem('remote')
+    expect(item.interval).toBe(240)
+    expect(item.name).toBe('用户改过的名字')
+    // 更新结果字段已刷新，失败留痕被清除
+    expect(item.lastUpdateError).toBeUndefined()
+    expect(item.lastUpdateErrorAt).toBeUndefined()
+    expect(readFileSync(join(testDir, 'profiles', 'remote.yaml'), 'utf8')).toBe(newProfile)
+  })
+
+  it('编辑弹窗保存不抹掉打开期间并发刷新的 updated/extra', async () => {
+    const dialogSnapshot = await requireProfileItem('remote')
+    await updateProfileConfig((config) => {
+      const item = config.items.find((i) => i.id === 'remote')
+      if (item) {
+        item.updated = 777
+        item.extra = { upload: 5, download: 6, total: 7, expire: 8 }
+      }
+      return config
+    })
+
+    await updateProfileItem({ ...dialogSnapshot, name: 'Renamed' })
+
+    const item = await requireProfileItem('remote')
+    expect(item.name).toBe('Renamed')
+    expect(item.updated).toBe(777)
+    expect(item.extra?.upload).toBe(5)
   })
 })

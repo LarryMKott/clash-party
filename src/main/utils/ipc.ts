@@ -46,6 +46,7 @@ import {
   setProfileStr,
   updateProfileItem,
   setProfileConfig,
+  reorderProfileItems,
   getOverrideConfig,
   setOverrideConfig,
   getOverrideItem,
@@ -326,6 +327,7 @@ const asyncHandlers: Record<string, AsyncFn> = {
   // Profile
   getProfileConfig,
   setProfileConfig,
+  reorderProfileItems,
   getCurrentProfileItem,
   getProfileItem,
   getProfileStr,

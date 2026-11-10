@@ -54,7 +54,7 @@ const Profiles: React.FC = () => {
   const { t } = useTranslation()
   const {
     profileConfig,
-    setProfileConfig,
+    reorderProfileItems,
     addProfileItem,
     updateProfileItem,
     removeProfileItem,
@@ -213,7 +213,8 @@ const Profiles: React.FC = () => {
         const [movedItem] = newOrder.splice(activeIndex, 1)
         newOrder.splice(overIndex, 0, movedItem)
         setSortedItems(newOrder)
-        await setProfileConfig({ current, items: newOrder })
+        // 只提交条目顺序，主进程在写队列内按最新配置重排，避免整份快照覆盖并发写入（#1397）
+        await reorderProfileItems(newOrder.map((item) => item.id))
       }
     }
   }

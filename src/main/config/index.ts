@@ -8,6 +8,7 @@ export {
   getFileStr,
   setFileStr,
   setProfileConfig,
+  reorderProfileItems,
   addProfileItem,
   removeProfileItem,
   createProfile,
