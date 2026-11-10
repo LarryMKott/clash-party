@@ -19,6 +19,8 @@ import {
 } from './core/manager'
 import { createTray } from './resolve/tray'
 import { init, initBasic, safeShowErrorBox, startSubStoreServices } from './utils/init'
+import { appendPreflightHint } from './core/preflight'
+import { showNotification } from './utils/notification'
 import { initShortcut } from './resolve/shortcut'
 import { initProfileUpdater } from './core/profileUpdater'
 import { initQuotaGuard } from './core/quotaGuard'
@@ -361,7 +363,19 @@ app
         }
         coreStarted = true
       } catch (e) {
-        safeShowErrorBox('mihomo.error.coreStartFailed', `${e}`)
+        mainLogger.error('Core startup failed', e)
+        // 把体检结论附在错误后面，让用户能区分端口占用、配置损坏等常见原因；
+        // 静默启动时窗口隐藏，模态错误框容易被忽略，改用系统通知（#515、#916）
+        const message = await appendPreflightHint(`${e}`)
+        if (appConfig.silentStart) {
+          showNotification({
+            id: 'core-start-failed',
+            title: i18next.t('mihomo.error.coreStartFailed'),
+            body: message
+          })
+        } else {
+          safeShowErrorBox('mihomo.error.coreStartFailed', message)
+        }
       } finally {
         // 安全检查通过后，即使自动启动失败，也允许用户手动重试。
         completeCoreInitialization(true)
