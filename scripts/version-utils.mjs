@@ -101,7 +101,8 @@ export function generateDownloadLinksMarkdown(downloadUrl, version) {
   links += '\n#### Linux：\n\n'
   links += `- DEB：[64位](${downloadUrl}/${fw}-linux-${version}-amd64.deb) | [ARM64](${downloadUrl}/${fw}-linux-${version}-arm64.deb)\n\n`
   links += `- RPM：[64位](${downloadUrl}/${fw}-linux-${version}-x86_64.rpm) | [ARM64](${downloadUrl}/${fw}-linux-${version}-aarch64.rpm)\n\n`
-  links += `- PACMAN：[64位](${downloadUrl}/${fw}-linux-${version}-x64.pkg.tar.zst) | [ARM64](${downloadUrl}/${fw}-linux-${version}-aarch64.pkg.tar.zst)`
+  links += `- PACMAN：[64位](${downloadUrl}/${fw}-linux-${version}-x64.pkg.tar.zst) | [ARM64](${downloadUrl}/${fw}-linux-${version}-aarch64.pkg.tar.zst)\n\n`
+  links += `- TAR.GZ：[64位](${downloadUrl}/${fw}-linux-${version}-x64.tar.gz) | [ARM64](${downloadUrl}/${fw}-linux-${version}-arm64.tar.gz)`
 
   return links
 }
