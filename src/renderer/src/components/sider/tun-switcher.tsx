@@ -95,7 +95,12 @@ const TunSwitcher: React.FC<Props> = (props) => {
       if (enable) {
         const autoRunEnabled = await window.electron.ipcRenderer.invoke('checkAutoRun')
         if (autoRunEnabled) {
-          await window.electron.ipcRenderer.invoke('enableAutoRun')
+          // 自启任务的提权级别刷新失败不应影响 TUN 本身的开启
+          try {
+            await window.electron.ipcRenderer.invoke('enableAutoRun')
+          } catch (error) {
+            console.warn('Auto-run refresh failed:', error)
+          }
         }
       }
     } else {

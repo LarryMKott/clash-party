@@ -299,13 +299,12 @@ const GeneralConfig: React.FC = () => {
             isSelected={enable}
             onValueChange={async (v) => {
               try {
-                // 检查管理员权限
+                // 非管理员时创建/删除计划任务会弹 UAC 提权窗，先告知用户
                 const hasAdminPrivileges =
                   await window.electron.ipcRenderer.invoke('checkAdminPrivileges')
 
                 if (!hasAdminPrivileges) {
-                  const notification = new Notification(t('settings.autoStart.permissions'))
-                  notification.close()
+                  toast.info(t('settings.autoStart.permissions'), undefined, 4000)
                 }
 
                 if (v) {

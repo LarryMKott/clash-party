@@ -178,9 +178,17 @@ export async function enableAutoRun(): Promise<void> {
           '/f'
         ])
         await managerLogger.info('Registry auto-run entry created successfully')
+        taskCreated = true
       } catch (regError) {
         await managerLogger.error('Failed to create registry auto-run entry:', regError)
       }
+    }
+
+    if (!taskCreated) {
+      // 任务和注册表兜底都失败时抛错，让设置页能提示用户，而不是静默失败（#1208）
+      throw new Error(
+        'Failed to register auto-start: scheduled task and registry fallback both failed'
+      )
     }
   }
   if (process.platform === 'darwin') {
