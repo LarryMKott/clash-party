@@ -4,6 +4,7 @@ import { stat } from 'fs/promises'
 import { existsSync } from 'fs'
 import { app, powerMonitor } from 'electron'
 import { stopCoreForExit, cleanupCoreWatcher } from './core/manager'
+import { stopCoreWatchdog } from './core/watchdog'
 import { primeAdminPrivilegesCache } from './core/admin'
 import { triggerSysProxy, disableSysProxySync } from './sys/sysproxy'
 import { closeTrafficUsage } from './traffic/recorder'
@@ -104,6 +105,7 @@ export function setupAppLifecycle(): void {
       saveMainWindowState() // 硬退出补一次落盘
 
       cleanupCoreWatcher()
+      stopCoreWatchdog()
 
       if (process.platform !== 'darwin') {
         disableSysProxySync()

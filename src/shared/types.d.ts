@@ -366,6 +366,7 @@ interface IAppConfig {
   customTheme?: string
   autoCheckUpdate: boolean
   autoUpdateProfileOnStart: boolean
+  coreWatchdog: boolean
   silentUpdate: boolean
   githubProxy?: string
   silentStart: boolean

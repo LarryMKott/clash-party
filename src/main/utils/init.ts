@@ -20,6 +20,7 @@ import {
 } from '../config'
 import { startSSIDCheck } from '../sys/ssid'
 import { initResumeRecovery } from '../sys/resume'
+import { startCoreWatchdog } from '../core/watchdog'
 import i18next, { resources } from '../../shared/i18n'
 import {
   DEFAULT_MIHOMO_LAN_ALLOWED_IPS,
@@ -523,6 +524,7 @@ export async function init(): Promise<void> {
   const { sysProxy } = await getAppConfig()
 
   initResumeRecovery()
+  startCoreWatchdog()
 
   const initTasks: Promise<void>[] = [ensureRuntimeFiles(), startSSIDCheck()]
 

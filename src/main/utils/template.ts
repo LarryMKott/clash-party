@@ -49,6 +49,7 @@ export const defaultConfig: IAppConfig = {
   proxyDisplayOrder: 'default',
   autoCheckUpdate: true,
   autoUpdateProfileOnStart: true,
+  coreWatchdog: true,
   silentUpdate: true,
   autoCloseConnection: true,
   autoCloseConnectionOnlyGroup: false,

@@ -148,6 +148,10 @@ export function hasCoreProcess(): boolean {
   return Boolean(child && !child.killed && child.exitCode === null && child.signalCode === null)
 }
 
+export function getCoreOperationPhase(): 'initializing' | 'ready' | 'blocked' | 'shutting-down' {
+  return coreOperationPhase
+}
+
 export function beginCoreInitialization(): void {
   coreOperationPhase = 'initializing'
 }
